@@ -1,0 +1,74 @@
+#pragma once
+
+#include "turbo.inc"
+
+/**
+ * # Text Effects
+ */
+
+#define TEXT_BOLD \\x1b[1m
+
+#define TEXT_FLUSH \\x1b[0m
+
+#define TEXT_COLOR_CRIMSON \\x1b[38;2;220;20;60m
+
+#define TEXT_COLOR_ROSE \\x1b[38;2;250;0;63m
+
+#define TEXT_COLOR_ORANGE \\x1B[38;2;255;165;0m
+
+#define TEXT_COLOR_JADE \\x1b[38;2;0;168;107m
+
+#define TEXT_COLOR_BLUE \\x1b[34m
+
+/**
+ * # Logging
+ */
+
+#define FMT_DATE_NOW() [EXPAND(TEXT_COLOR_BLUE)EXPAND(__DATE_YEAR__-__DATE_MONTH__-__DATE_DAY__)T(__TIME__)EXPAND(TEXT_FLUSH)]
+
+#define FMT_LITERAL(str) EXPAND(TEXT_COLOR_BLUE)EXPAND(str)EXPAND(TEXT_FLUSH)
+
+#define FMT_OK(...)    EXPAND(FMT_DATE_NOW())EXPAND(TEXT_COLOR_JADE     )EXPAND(TEXT_BOLD) OK    EXPAND(TEXT_FLUSH)__VA_ARGS__
+#define FMT_INFO(...)  EXPAND(FMT_DATE_NOW())EXPAND(TEXT_COLOR_BLUE     )EXPAND(TEXT_BOLD) INFO  EXPAND(TEXT_FLUSH)__VA_ARGS__
+#define FMT_WARN(...)  EXPAND(FMT_DATE_NOW())EXPAND(TEXT_COLOR_ORANGE   )EXPAND(TEXT_BOLD) WARN  EXPAND(TEXT_FLUSH)__VA_ARGS__
+#define FMT_ERROR(...) EXPAND(FMT_DATE_NOW())EXPAND(TEXT_COLOR_ROSE     )EXPAND(TEXT_BOLD) ERROR EXPAND(TEXT_FLUSH)__VA_ARGS__
+#define FMT_CRIT(...)  EXPAND(FMT_DATE_NOW())EXPAND(TEXT_COLOR_CRIMSON  )EXPAND(TEXT_BOLD) FATAL  EXPAND(TEXT_FLUSH)__VA_ARGS__
+
+#define PRINT(...) \
+	.print __VA_ARGS__
+
+#define PRINT_OK(...) \
+	PRINT(STRINGIFYX(FMT_OK(__VA_ARGS__)))
+#define PRINT_INFO(...) \
+	PRINT(STRINGIFYX(FMT_INFO(__VA_ARGS__)))
+#define PRINT_WARN(...) \
+	PRINT(STRINGIFYX(FMT_WARN(__VA_ARGS__)))
+#define PRINT_ERROR(...) \
+	PRINT(STRINGIFYX(FMT_ERROR(__VA_ARGS__)))
+#define PRINT_CRIT(...) \
+	PRINT(STRINGIFYX(FMT_CRIT(__VA_ARGS__)))
+
+/**
+ * # Standard
+ */
+
+#define ARCH_USE(x) \
+	M(define _ARCH x) N\
+	M(define ARCH() _ARCH)
+	
+#define DONE(...) \
+	__VA_OPT__( N\
+		PRINT(STRINGIFYX(Build EXPAND(TEXT_COLOR_ROSE)EXPAND(FAILED)EXPAND(TEXT_FLUSH))) N\
+		.fail 0 N\
+	)
+
+#define THROW(...) \
+	PRINT_CRIT(__VA_ARGS__!) N\
+	PRINT(STRINGIFYX(TAB At\: FMT_LITERAL(__FILE__):FMT_LITERAL(__LINE__))) N\
+	DONE(1)
+	
+#define BEGIN() \
+	M(if !defined(_ARCH)) N\
+		THROW(No architecture loaded) N\
+	M(else) N\
+	M(endif)
