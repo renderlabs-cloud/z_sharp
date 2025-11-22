@@ -1,4 +1,4 @@
-use z_sharp::modification;
+use ::z_sharp::modification;
 use z_sharp::modification::Modification;
 
 pub fn get() -> Modification {

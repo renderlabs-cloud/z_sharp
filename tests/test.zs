@@ -1,3 +1,1 @@
-function abc() -> byte {
-	
-}
+function

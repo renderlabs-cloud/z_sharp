@@ -9,5 +9,6 @@ echo "$PPP" | gcc -P -x assembler-with-cpp -
 rm a.out
 
 export RUST_BACKTRACE=1
+export RUSTFLAGS="-C link-args=-Wl,-Bdynamic -llua5.4"
 
-cargo test
+cargo test 

@@ -1,20 +1,21 @@
-use crate::version::VERSION;
-use crate::modification::consumer::{Consumer, };
-use crate::modification::Modification;
-use crate::modification::capture::Chain;
+use crate::config::VERSION;
+// use crate::modification::consumer::{ };
+use crate::modification::{ Modification, };
+use crate::modification::capture::{ Chain, Rule, SingleConfig, OrConfig, RepeatConfig, };
 
-use ::mlua::{Lua, Table, Function, Value};
+use ::mlua::{
+	Lua, Table, Value,
+	StdLib,
+	ObjectLike,
+};
 
 use ::mlua::prelude::*;
-use ::mlua::Error;
-use ::mlua::StdLib;
 
-use ::tracing::{info, };
+pub fn z_sharp_std_lua_module(lua: & Lua, (): ()) -> mlua::Result<Table> {
+	let exports: Table = lua.create_table()?;
 
-use ::std::collections::HashMap;
-
-pub fn load_std(lua: & Lua) -> Result<(), Error> {
-	lua.globals().set("console", lua.create_table_from(vec![
+	// TODO: Make this a struct
+	exports.set("console", lua.create_table_from(vec![
 		("log", lua.create_function(|_: & Lua, line: Value| {
 			info!("{:#?}", line);
 
@@ -22,76 +23,95 @@ pub fn load_std(lua: & Lua) -> Result<(), Error> {
 		})?),
 	])?)?;
 
-	return Ok(());
+	return Ok(exports);
 }
 
-pub fn load_z_sharp_module(lua: & Lua) -> Result<(), Error> {
-	load_std(& lua)?;
+pub fn z_sharp_lua_module(lua: & Lua, (): ()) -> mlua::Result<Table> {
+	let exports: Table = lua.create_table()?;
 
-	let package: Table = lua.globals().get("package")?;
-	let searchers: Table = package.get("searchers")?;
+	exports.set("version", [
+		VERSION.major,
+		VERSION.minor,
+		VERSION.patch,
+	])?;
 
-	let searcher: Function = lua.create_function(move |lua: & Lua, name: String| {
-		let loader: Function = lua.create_function(move |lua: & Lua, ()| {
-			let exports: Table = lua.create_table()?;
-			exports.set("version", [
-				VERSION.major,
-				VERSION.minor,
-				VERSION.patch,
-			])?;
+	let lexer: Table = lua.create_table()?;
+	lexer.set("Chain", lua.create_proxy::<Chain>()?)?;
+	lexer.set("Rule", lua.create_proxy::<Rule>()?)?;
+	lexer.set("SingleConfig", lua.create_proxy::<SingleConfig>()?)?;
+	lexer.set("OrConfig", lua.create_proxy::<OrConfig>()?)?;
+	lexer.set("RepeatConfig", lua.create_proxy::<RepeatConfig>()?)?;
+	
+	lexer.set("create_chain", 
+		lua.create_function(move |lua: & Lua, name: String| {
+			let chain: Chain = Chain::new(name, lua);
 
-			exports.set("__", lua.create_table_from([
-				("capture_zones", lua.create_table()?),
-			])?)?;
+			chain.table.set("name", chain.name.clone())?;
 
-			exports.set("create_capture_zone", lua.create_function(move |lua: & Lua, name: String| {
-				// ? Lua is currently in the z_sharp module
-				let chain: Chain = Chain::new(&lua)?;
+			return Ok(chain.clone());
+		})?
+	)?;
 
-				// TODO: Save `name` to capture_zones
-				info!(name);
-				let internals: Table = lua.globals();
-				internals.push(chain)?;
-				info!("{:#?}", secret);
+	exports.set("lexer", lexer)?;
 
-				return Ok(chain.table.clone());
-			})?)?;
+	exports.set("__UNSAFE__", create_unsafe_portion(lua)?)?;
 
-			return Ok(exports.clone());
-		})?;
-
-		if name == "z_sharp" {
-			return Ok(mlua::Value::Function(loader));
-		} else {
-			return Ok(mlua::Value::Nil);
-		};
-	})?;
-
-	searchers.raw_insert(1, searcher)?;
-
-	return Ok(());
+	return Ok(exports.clone());
 }
 
-pub fn new(name: &'static str, source: String) -> Result<Modification, Error> {
+pub fn create_unsafe_portion(lua: & Lua) -> mlua::Result<Table> {
+	let exports: Table = lua.create_table()?;
+
+	exports.set("__EXPORTS__",
+		lua.create_table_from(vec![
+			("chains".to_string(), lua.create_table()?),
+		])?
+	)?;
+
+	exports.set("export_chain",
+		lua.create_function(move |lua: & Lua, chain: Chain| {
+			// Add a chain
+			let chains: Table = lua.globals().get_path::<Table>("__Z_SHARP__.__UNSAFE__.__EXPORTS__.chains")?;
+
+			let index: usize = chains.raw_len();
+
+			chains.raw_set(index + 1, chain)?;
+
+			return Ok(());
+		})?
+	)?;
+
+	return Ok(exports);
+}
+
+pub fn new(name: &'static str, source: String) -> Result<Modification, LuaError> {
 	let lua: Lua = Lua::new_with(
 		StdLib::MATH
-		| StdLib::COROUTINE
+		// | StdLib::COROUTINE To be considered
 		| StdLib::STRING
 		| StdLib::PACKAGE
 		| StdLib::TABLE
 		,
-		LuaOptions::new()
+		LuaOptions::default()
 	)?;
 
-	let exports: HashMap<String, Value> = HashMap::new();
+	let globals: Table = lua.globals();
 
-	load_z_sharp_module(&lua)?;
+	let preload: Table = globals
+		.get::<Table>("package")?
+		.get::<Table>("preload")?
+	;
 
-	lua.load(source).exec()?;
+	preload.set("z_sharp_std", lua.create_function(z_sharp_std_lua_module)?)?;
+	preload.set("z_sharp", lua.create_function(z_sharp_lua_module)?)?;
+
+	globals.set("__Z_SHARP_STD__", z_sharp_std_lua_module(&lua, ())?)?;
+	globals.set("__Z_SHARP__", z_sharp_lua_module(&lua, ())?)?;
+
+	lua.load(source).exec()?; // TODO: Handle errors?
 
 	return Ok(Modification { 
 		name: name,
-		ctx: lua,
-		exports: exports
+		lua: lua,
 	});
 }

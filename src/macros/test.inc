@@ -5,6 +5,7 @@ ARCH_USE(ARM64)
 
 BEGIN()
 
+
 .global main
 main:
 	ret x1

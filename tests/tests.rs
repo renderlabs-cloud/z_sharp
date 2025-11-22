@@ -1,30 +1,45 @@
 pub mod my_mod;
 
-#[allow(unused_imports)]
-use ::tracing_subscriber;
-#[deny(unused_imports)]
-
 #[macro_use]
 extern crate time_test;
 
+#[macro_use]
+extern crate tracing;
+
 #[cfg(test)]
 mod tests {
-    use ::z_sharp::BuildConfig;
+	use ::z_sharp::builder;
+
 	use crate::my_mod;
 
-	use ::std::collections::HashMap;
+	use ::tokio::{ fs, };
 
-	#[test]
-	fn zero() {
+	#[tokio::test]
+	async fn zero() -> Result<(), builder::Error> {
 		time_test!();
-		tracing_subscriber::fmt::init();
-		z_sharp::build(
-			BuildConfig {
-				mods: vec![my_mod::get()],
-				source: HashMap::from([
-					("test.zs".to_string(), include_str!("test.zs").to_string())
-				])
-			}
-		).unwrap();
+		::tracing_subscriber::fmt::init();
+
+		let binding: builder::Config = builder::Config {
+			mods: vec![my_mod::get()],
+		};
+  		let mut intermediate: builder::Intermediate = builder::new(
+			&binding
+		)?;
+
+		intermediate.add_source_resolvers(Box::new(|path: String| {
+			return Box::pin(async move {
+				let contents: Option<String> = fs::read_to_string(path).await.ok();
+
+				return contents;
+			});
+		}));
+
+		intermediate.request_source("tests/test.zs".to_string()).await?;
+
+		intermediate.interpret().await?;
+
+		info!("Done!");
+
+		return Ok(());
 	}
 }

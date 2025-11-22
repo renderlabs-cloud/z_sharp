@@ -1,27 +1,43 @@
 [package]
 name = "z_sharp"
 version = "0.0.0"
+authors = ["Brendan Lucas <brendan@mail.renderlabs.cloud>"]
+description = "The official Z# language crate — a high-efficiency, low-level language focused on speed, structure, and simplicity."
+license = "MIT"
 edition = "2024"
 
 [lib]
 name = "z_sharp"
 
 [dependencies]
-lazy_static = "1.5.0"
-mlua = { version = "0.11.4", features = ["lua54", "serde"] }
-nestify = "0.3.3"
-once_cell = "1.21.3"
+# Lua
+mlua = { version = "0.11.4", features = ["lua54", "serde", "macros", "module"] }
+mlua-magic-macros = "0.1.2" # Made by me!
+# mlua-extras = "0.0.7"
+serde = { version = "1.0.228", features = ["derive", "rc"] }
+tokio = { version = "1.48.0", features = ["rt-multi-thread", "macros", "time"] }
+# Regex
 regex = "1.12.2"
 serde_regex = "1.1.0"
-serde = { version = "1.0.228", features = ["derive", "rc"] }
-tracing = "0.1.41"
+# Macros
 derive_more = { version = "2.0.1", features = ["full"] }
+lazy_static = "1.5.0"
+nestify = "0.3.3"
+tracing = "0.1.41" # TODO: Move to dev
 static-toml = "1.3.0"
-strum_macros = "0.27.2"
-strum = "0.27.2"
+# International support with i18n
+
 
 [dev-dependencies]
-tracing-subscriber = "0.3.20"
+tokio = { version = "1.48.0", features = ["full"] }
 time-test = { version = "0.3.0" }
+tracing-subscriber = "0.3.20"
 
 [features]
+
+
+# My style footer
+[lints.clippy]
+needless_return = "allow"
+redundant_field_names = "allow"
+unused_unit = "allow"
