@@ -2,16 +2,19 @@ use crate::modification::{
 	consumer::Consumer,
 	gluea::{
 		Gluea,
-		LuaBox,
+		LuaHider,
+		LuaRc,
 	},
 };
 
 use ::mlua::{
-	Lua, Table, Value, Function,
-	IntoLua,
+	Table, Function,
 };
 // use ::mlua::prelude::*;
 
+use ::std::{
+	collections::HashMap,
+};
 use ::mlua_magic_macros;
 
 use ::nestify::nest;
@@ -22,22 +25,52 @@ use ::nestify::nest;
 pub struct RepeatConfig {
 	pub name: Option<String>,
 	pub rules: Vec<Rule>,
-	pub seperator: Option<LuaBox<Rule>>,
-	pub min: Option<i32>,
-	pub max: Option<i32>,
+	pub seperator: Option<LuaRc<Rule>>,
+	pub min: Option<usize>,
+	pub max: Option<usize>,
 }
 
-mlua_magic_macros::compile!(type_path = RepeatConfig, fields = true);
+// TODO: Refactor.
+#[mlua_magic_macros::implementation]
+impl RepeatConfig {
+	pub fn new(table: Table) -> mlua::Result<Self> {
+		return Ok(
+			Self {
+				name: table.get("name")?,
+				rules: table.get("rules")?,
+				seperator: table.get("seperator")?,
+				min: table.get("min")?,
+				max: table.get("max")?,
+			}
+		);
+	}
+}
+
+mlua_magic_macros::compile!(type_path = RepeatConfig, fields = true, methods = true);
 
 #[derive(Clone, Default, Debug)]
 #[mlua_magic_macros::structure]
 pub struct OrConfig {
 	pub name: Option<String>,
-	pub rules: Vec<Rule>,
+	pub rules_list: HashMap<String, Vec<Rule>>,
 	pub required: Option<bool>,
 }
 
-mlua_magic_macros::compile!(type_path = OrConfig, fields = true);
+// TODO: Refactor.
+#[mlua_magic_macros::implementation]
+impl OrConfig {
+	pub fn new(table: Table) -> mlua::Result<Self> {
+		return Ok(
+			Self {
+				name: table.get("name")?,
+				rules_list: table.get("rules_list")?,
+				required: table.get("required")?,
+			}
+		);
+	}
+}
+
+mlua_magic_macros::compile!(type_path = OrConfig, fields = true, methods = true);
 
 #[derive(Clone, Default, Debug)]
 #[mlua_magic_macros::structure]
@@ -86,7 +119,7 @@ nest! {
 	#[derive(Clone, Debug)]
 	#[mlua_magic_macros::structure]
 	pub struct Chain {
-		pub(crate) glue: Gluea, // Hide this with mlua-magic-macros. Add a new macro `#[mlua_magic_macros::hidden]`
+		pub(crate) glue: LuaHider<Gluea>, // Hide this with mlua-magic-macros. Add a new macro '#[mlua_magic_macros::hidden]'
 		pub name: String,
 		pub table: Table,
 		pub rules: Vec<
@@ -109,83 +142,73 @@ mlua_magic_macros::compile!(type_path = Rule, variants = true);
 // TODO: Major rewrite with mlua-macro-magic
 #[mlua_magic_macros::implementation]
 impl Chain {
-	/// This method doesn't make a `Chain`!
-	/// It's an internal method for chaining the calls.
-	pub(self) fn chain(& self) -> mlua::Result<LuaBox<Value>> {
-		return Ok(
-			LuaBox(
-				Box::new(
-					self
-						.clone()
-						.into_lua(&(self.glue.borrow()))?
-				)
-			)
-		);
+	#[allow(unreachable_code, unused_variables, clippy::diverging_sub_expression)]
+	pub fn new(name: String, gluea: Gluea) -> Self {
+		let table: Table = (*gluea.borrow())
+			.create_table()
+			.unwrap()
+		;
+
+		let instance: Self = Self {
+			name: name,
+			glue: LuaHider::new(gluea),
+			rules: Vec::new(),
+			table: table,
+		};
+
+		return instance;
 	}
 
 	pub fn create_consumer(& self) -> Consumer {
 		return Consumer {
 			rules: self.rules.clone(),
-			index: 0,
-			..Default::default()
 		};
 	}
 
 	// Captures text with Regex
-	pub fn capture(& mut self, rule: Rule) -> mlua::Result<LuaBox<Value>> {
+	pub fn capture(& mut self, rule: Rule) -> mlua::Result<()> {
 		self.rules.push(rule);
 
-		return self.chain();
+		return Ok(());
 	}
 
 	// Removes whitespace.
-	pub fn trim(& mut self) -> mlua::Result<LuaBox<Value>> {
+	pub fn trim(& mut self, required_option: Option<bool>) -> mlua::Result<()> {
 		// TODO: Make this configurable.
-		let trimmer: Rule = Rule::Single(SingleConfig {
+		let mut pattern: String = "\\s*".to_string();
+		if let Some(required) = required_option && required {
+			pattern = "\\s+".to_string();
+		};
+
+		let rule: Rule = Rule::Single(SingleConfig {
 			name: None,
-			pattern: "\\s*".to_string(),
+			pattern: pattern,
 			required: Some(false), // Actually, false doesn't mean much here, but just in case let's keep it here until we make it configurable.
 		});
 
-		self.rules.push(trimmer);
+		self.rules.push(rule);
 
-		return self.chain();
+		return Ok(());
 	}
 
 	// Define logic for capture group.
 	// TODO: Improve logic capabilities.
-	pub fn logic(& mut self, func: Function) -> mlua::Result<LuaBox<Value>> {
+	pub fn logic(& mut self, func: Function) -> mlua::Result<()> {
 		let rule: Rule = Rule::Logic(LogicConfig::new(func).unwrap()); // TODO: Error handling?
 
 		self.rules.push(rule);
 
-		return self.chain();
+		return Ok(());
 	}
 
 	// Complete the Chain.
 	pub fn done(& mut self) -> mlua::Result<()> {
-		info!("Registering \"{}\".", self.name);
-		let lua: & Lua = &(self.glue).borrow();
-		let exporter: Function = lua.load("require('z_sharp').__UNSAFE__.export_chain").eval()?; // TODO: Expand.
+		// info!("Rules: {:#?}", self.rules);
 
-		exporter.call::<Chain>((*self).clone())?;
+		// TODO: Make the chain immutable.
 
 		return Ok(());
-		
 	}
 }
 
 mlua_magic_macros::compile!(type_path = Chain, fields = true, methods = true);
-
-impl Chain {
-	pub fn new(name: String, lua: & Lua) -> Self {
-		let instance: Self = Self {
-			name: name,
-			glue: Gluea::new(lua.clone()), // TODO: Optimize?
-			rules: Vec::new(),
-			table: lua.create_table().unwrap(), // ? This should never fail.
-		};
-
-		return instance;
-	}
-}

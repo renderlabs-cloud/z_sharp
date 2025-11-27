@@ -1,47 +1,51 @@
 use crate::modification::{
 	capture::{ Rule, },
+	gluea::{
+		LuaRc,
+	},
 };
 
 use ::std::collections::HashMap;
 
-use ::regex::{ Regex, Match, };
+use ::regex::{
+	Regex,
+	Match,
+};
 
 use ::nestify::nest;
+
+
+#[derive(Clone, Default, Debug)]
+#[mlua_magic_macros::structure]
+pub struct Consumer {
+	pub rules: Vec<Rule>,
+}
 
 nest! {
 	#[derive(Clone, Default, Debug)]
 	#[mlua_magic_macros::structure]
-	pub struct Consumer {
-		pub consumed: String,
-		pub rules: Vec<Rule>,
-		pub index: usize,
-		pub results: HashMap<String,
-			#[derive(Clone, Default, Debug)]
-			#[mlua_magic_macros::structure]
-			pub struct ConsumeResult {
-				pub name: Option<String>,
-				pub captured: String,
-				pub data: Option<
-				#[derive(Clone, Default, Debug)]
-				#[mlua_magic_macros::enumeration]
-				pub enum ConsumeResultData {
-					Single,
-					Or(HashMap<String, String>),
-					Repeat(HashMap<String, Vec<String>>),
-					#[default]
-					None,
-				}>,
-				pub is_match: bool,
-			}
-		>,
-		pub done: bool,
+	pub struct CaptureResult {
+		pub name: Option<String>,
+		pub captured: String,
+		pub data: Option<
+		#[derive(Clone, Default, Debug)]
+		#[mlua_magic_macros::enumeration]
+		pub enum CaptureResultData {
+			Single,
+			Or(Results),
+			Repeat(Vec<CaptureResult>),
+			#[default]
+			None,
+		}>,
 		pub is_match: bool,
 	}
 }
 
-mlua_magic_macros::compile!(type_path = ConsumeResultData, variants = true);
+pub type Results = HashMap<String, CaptureResult>;
 
-mlua_magic_macros::compile!(type_path = ConsumeResult, fields = true);
+mlua_magic_macros::compile!(type_path = CaptureResult, fields = true);
+
+mlua_magic_macros::compile!(type_path = CaptureResultData, variants = true);
 
 mlua_magic_macros::compile!(type_path = Consumer, fields = true, methods = true);
 
@@ -50,13 +54,14 @@ impl Consumer {
 	pub fn new(rules: Vec<Rule>) -> Consumer {
 		return Consumer {
 			rules: rules,
-			..Default::default()
 		};
 	}
+}
 
-	#[allow(clippy::only_used_in_recursion)]
-	pub fn check(& self, rule: Rule, text: String) -> ConsumeResult {
-		let mut result: ConsumeResult = Default::default();
+impl Consumer {
+	#[allow(unused_labels)]
+	pub fn check(& self, rule: Rule, (results, text): (& LuaRc<&mut Results>, & str)) -> CaptureResult {
+		let mut result: CaptureResult = Default::default();
 
 		match & rule {
 			Rule::Single(config) => {
@@ -66,79 +71,94 @@ impl Consumer {
 					&(config.pattern.clone().to_string())
 				).unwrap();
 
-				let capture: Option<Match<'_>> = regex.find(&text);
+				let capture: Option<Match<'_>> = regex.find(text);
 
-				if let Some(mat) = capture && mat.start() == 0 {
-					result.data = Some(ConsumeResultData::Single);
+				if let Some(match_) = capture && match_.start() == 0 {
+					result.data = Some(CaptureResultData::Single);
 					result.is_match = true;
-					result.captured = capture.unwrap().as_str().to_string();
+					result.captured = match_.as_str().to_string();
 				};
 			},
 
-			Rule::Or(_config) => {
-				// TODO:
+			Rule::Or(config) => {
+				let mut sub_results: HashMap<String, CaptureResult> = HashMap::new();
+				let mut offset: usize = 0;
+
+				info!("Config: {:#?}", config);
+
+				'or: for sub_rules in &config.rules_list {
+					'rules: for sub_rule in sub_rules.1 {
+						let sub_result: CaptureResult = self.check(sub_rule.clone(), (results, text));
+						
+						info!("Sub result: {:#?}", sub_result);
+						if sub_result.is_match {
+							offset += sub_result.captured.len();
+
+							sub_results.insert(sub_rules.0.clone(), sub_result);
+
+							break 'or;
+						};
+					};
+
+				};
+
+				if !sub_results.is_empty() {
+					result.is_match = true;
+				};
+
+				if let Some(required) = config.required && required {
+					result.is_match = true;
+				};
+
+				result.data = Some(CaptureResultData::Or(sub_results));
+				result.name = config.name.clone();
+				result.captured = text[0 .. offset].to_string();
 			},
 
 			Rule::Repeat(config) => {
-				result.name = config.name.clone();
+				let min_reps: usize = config.min.unwrap_or(1);
+				let max_reps: usize = config.max.unwrap_or(usize::MAX);
 
-				let mut data_map: HashMap<String, Vec<String>> = HashMap::new();
-				let mut remaining_text: String = text.clone();
-				let mut total_captured: String = String::new();
+				let mut sub_results: Vec<CaptureResult> = Vec::new();
 
-				let min_reps: i32 = config.min.unwrap_or(0);
-				let max_reps: i32 = config.max.unwrap_or(i32::MAX);
+				let mut offset: usize = 0;
+				let mut reps: usize = 0;
 
-				let mut i: i32 = 0;
-
-				while i < max_reps {
-					let mut all_rules_matched: bool = true;
-					let mut sub_results: Vec<ConsumeResult> = Vec::new();
+				if config.rules.is_empty() {
+					result.is_match = true; 
 					
-					let mut current_captured_text: String = String::new();
+				};
 
-					for sub_rule in &config.rules {
-						let sub_result: ConsumeResult = self.check(sub_rule.clone(), remaining_text.clone());
-						
+				'repeat: while reps < max_reps {
+					'rules: for rule in &config.rules {
+						let sub_result: CaptureResult = self.check(rule.clone(), (results, &text[offset..])); // TODO: Optimize?
+
 						if sub_result.is_match {
 							sub_results.push(sub_result.clone());
-							current_captured_text.push_str(&(sub_result.captured));
+							reps += 1;
+							offset += sub_result.captured.len();
 
-							remaining_text = remaining_text[sub_result.captured.len()..].to_string();
+							continue 'rules;
 						} else {
-							all_rules_matched = false;
-							break;
+							// Break out of the while loop.
+							break 'repeat;
 						};
-					};
-
-					if all_rules_matched {
-						i += 1;
-						total_captured.push_str(& current_captured_text);
-
-						for result in sub_results {
-							if let Some(name) = result.name {
-								data_map.entry(name.to_string())
-									.or_default()
-									.push(result.captured)
-								;
-							};
-						};
-					} else {
-						break;
 					};
 				};
 
-				if i >= min_reps {
+				if reps >= min_reps {
+					result.data = Some(CaptureResultData::Repeat(sub_results));
 					result.is_match = true;
-					result.captured = total_captured;
-					result.data = Some(ConsumeResultData::Repeat(data_map));
+					result.captured = text[0 .. offset].to_string();
+				} else {
+					result.is_match = false;
 				};
 			},
 
 			Rule::Logic(config) => {
 				// TODO: Add error handling.
 				if let Some(func) = &config.func {
-					let func_result: mlua::Result<bool> = func.call(self.results.clone());
+					let func_result: mlua::Result<bool> = func.call((***results).clone());
 
 					match func_result {
 						Ok(is_match) => {
@@ -160,37 +180,32 @@ impl Consumer {
 
 		return result;
 	}
-}
 
-impl Consumer {
-	pub fn consume<'a>(& mut self, text: &'a str) -> &'a str {
+	pub fn consume<'a>(& mut self, text: &'a str) -> (Option<Results>, &'a str) {
 		let mut remaining: & str = text;
+		let mut index: usize = 0;
 
-		self.is_match = true;
+		let mut results: Results = HashMap::new();
 
-		while self.index < self.rules.len() {
-			let rule: Rule = self.rules[self.index].clone();
-			let result: ConsumeResult = self.check(rule.clone(), remaining.to_string());
+		while index < self.rules.len() {
+			let rule: Rule = self.rules[index].clone();
+			let result: CaptureResult = self.check(rule.clone(), (&LuaRc::new(&mut results), remaining));
 
 			if !result.is_match {
-				self.is_match = false;
 				info!("{}", text);
-				return text;
+				return (None, text);
 			};
 
-			self.index += 1;
-			self.consumed += &(result.captured);
+			index += 1;
 
 			remaining = &(remaining[result.captured.len() ..]);
 
-			if let Some(name) = &result.name {
-				self.results.insert(name.to_string(), result);
+			if let Some(name) = &(result.name) {
+				results.insert(name.to_string(), result);
 			};
 			
 		};
 
-		self.done = true;
-
-		return remaining;
+		return (Some(results), remaining);
 	}
 }

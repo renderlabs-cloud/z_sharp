@@ -1,16 +1,22 @@
 use crate::config::VERSION;
-// use crate::modification::consumer::{ };
-use crate::modification::{ Modification, };
-use crate::modification::capture::{ Chain, Rule, SingleConfig, OrConfig, RepeatConfig, };
+use crate::modification::{
+	// consumer::{ Consumer, },
+	capture::{
+		Chain, Rule,
+		SingleConfig, OrConfig, RepeatConfig,
+	},
+	Modification,
+};
 
 use ::mlua::{
 	Lua, Table, Value,
 	StdLib,
-	ObjectLike,
+	//ObjectLike,
 };
 
 use ::mlua::prelude::*;
 
+/// Exports the Z# standard library to Lua.
 pub fn z_sharp_std_lua_module(lua: & Lua, (): ()) -> mlua::Result<Table> {
 	let exports: Table = lua.create_table()?;
 
@@ -21,11 +27,35 @@ pub fn z_sharp_std_lua_module(lua: & Lua, (): ()) -> mlua::Result<Table> {
 
 			return Ok(());
 		})?),
+		("warn", lua.create_function(|_: & Lua, line: Value| {
+			warn!("{:#?}", line);
+
+			return Ok(());
+		})?),
+		("error", lua.create_function(|_: & Lua, line: Value| {
+			error!("{:#?}", line);
+
+			return Ok(());
+		})?),
 	])?)?;
 
 	return Ok(exports);
 }
 
+/// Exports the Z# standard library to Lua.
+///
+/// This function creates a new table and populates it with the following values:
+///
+/// - `version`: The version of the library as a table of three integers.
+/// - `lexer`: A table containing functions to create new instances of the following types:
+///     * `Chain`: A new `'Chain'` instance with the provided name.
+///     * `Rule`: A new `'Rule'` instance.
+///     * `SingleConfig`: A new `'SingleConfig'` instance.
+///     * `OrConfig`: A new `'OrConfig'` instance.
+///     * `RepeatConfig`: A new `'RepeatConfig'` instance.
+/// - `__UNSAFE__`: A table containing an unsafe function to create a new `'Gluea'` instance.
+///
+/// The function returns a [`Result`] containing the created table on success, or a [`LuaError`] on failure.
 pub fn z_sharp_lua_module(lua: & Lua, (): ()) -> mlua::Result<Table> {
 	let exports: Table = lua.create_table()?;
 
@@ -41,37 +71,17 @@ pub fn z_sharp_lua_module(lua: & Lua, (): ()) -> mlua::Result<Table> {
 	lexer.set("SingleConfig", lua.create_proxy::<SingleConfig>()?)?;
 	lexer.set("OrConfig", lua.create_proxy::<OrConfig>()?)?;
 	lexer.set("RepeatConfig", lua.create_proxy::<RepeatConfig>()?)?;
-	
-	lexer.set("create_chain", 
-		lua.create_function(move |lua: & Lua, name: String| {
-			let chain: Chain = Chain::new(name, lua);
 
-			chain.table.set("name", chain.name.clone())?;
 
-			return Ok(chain.clone());
-		})?
-	)?;
-
-	exports.set("lexer", lexer)?;
-
-	exports.set("__UNSAFE__", create_unsafe_portion(lua)?)?;
-
-	return Ok(exports.clone());
-}
-
-pub fn create_unsafe_portion(lua: & Lua) -> mlua::Result<Table> {
-	let exports: Table = lua.create_table()?;
-
-	exports.set("__EXPORTS__",
-		lua.create_table_from(vec![
-			("chains".to_string(), lua.create_table()?),
-		])?
-	)?;
-
-	exports.set("export_chain",
+	lexer.set("register_chain",
 		lua.create_function(move |lua: & Lua, chain: Chain| {
 			// Add a chain
-			let chains: Table = lua.globals().get_path::<Table>("__Z_SHARP__.__UNSAFE__.__EXPORTS__.chains")?;
+			let chains: Table = lua.globals()
+				.get::<Table>("__Z_SHARP__")?
+				.get::<Table>("__UNSAFE__")?
+				.get::<Table>("registry")?
+				.get::<Table>("chains")?
+			;
 
 			let index: usize = chains.raw_len();
 
@@ -81,16 +91,43 @@ pub fn create_unsafe_portion(lua: & Lua) -> mlua::Result<Table> {
 		})?
 	)?;
 
+	exports.set("lexer", lexer)?;
+
+	// HACK (-) This exposes Z#'s internal registry to Lua!
+	// ! Be very careful with this!
+	// ? This `unsafe` block is unnecessary, but since this could lead to unexpected behavior, I will label it for now.
+	#[allow(unused_unsafe)]
+	unsafe {
+		exports.set("__UNSAFE__", create_unsafe_portion(lua)?)?;		
+	};
+
 	return Ok(exports);
 }
 
+/// Creates an unsafe glue instance.
+///
+/// Use this portion carefully, as it can lead to unexpected behavior if used incorrectly.
+pub fn create_unsafe_portion(lua: & Lua) -> mlua::Result<Table> {
+	let exports: Table = lua.create_table()?;
+
+	exports.set("registry",
+		lua.create_table_from(vec![
+			("chains".to_string(), lua.create_table()?),
+		])?
+	)?;
+
+	return Ok(exports);
+}
+
+/// Creates a new 'Modification' instance.
+///
+/// This function takes a name and a Lua source file string. It loads the Lua source file into a new 'Lua' instance and creates a new 'Modification' instance with the provided name and the loaded Lua instance.
+///
+/// The function returns a 'Result' containing the created 'Modification' instance on success, or a 'LuaError' on failure.
 pub fn new(name: &'static str, source: String) -> Result<Modification, LuaError> {
 	let lua: Lua = Lua::new_with(
 		StdLib::MATH
-		// | StdLib::COROUTINE To be considered
-		| StdLib::STRING
-		| StdLib::PACKAGE
-		| StdLib::TABLE
+		| StdLib::ALL_SAFE
 		,
 		LuaOptions::default()
 	)?;

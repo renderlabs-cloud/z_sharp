@@ -8,4 +8,7 @@ pub mod config;
 #[macro_use]
 extern crate tracing;
 
+#[macro_use]
+extern crate rust_i18n;
+
 pub use crate::build::builder;

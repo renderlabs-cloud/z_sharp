@@ -1,16 +1,22 @@
 use ::mlua::{
 	Value, Table,
-	// UserData, MaybeSend,
-	IntoLua, // 
-	// IntoLuaMulti,
-	FromLua, // FromLuaMulti,
-//	MultiValue,
-//	Error,
+	IntoLua,
+	FromLua,
+	// UserData,
+	// UserDataRef,
 };
 use ::mlua::prelude::*;
 
 // use ::std::rc::{ Rc, };
-use ::std::cell::{ RefCell, };
+use ::std::{
+	cell::{
+		RefCell,
+	},
+	rc::{
+		Rc,
+	},
+};
+
 
 use ::derive_more::{
 	with_trait::{
@@ -72,25 +78,61 @@ impl FromLua for Gluea {
 	}
 }
 
-// TODO: Implement for Box so this isn't needed.
+// TODO: Implement in mlua-magic so this isn't needed.
 #[derive(Clone, Deref, Debug)]
-pub struct LuaBox<T>(#[deref] pub Box<T>);
+pub struct LuaHider<T>(#[deref] pub(self) Option<T>);
 
-impl<T: IntoLua> IntoLua for LuaBox<T> {
-	fn into_lua(self, lua: &Lua) -> mlua::Result<Value> {
-		// Just forward to the inner type.
-		return T::into_lua(*(self.0), lua);
+impl<T> LuaHider<T> {
+	pub fn new(value: T) -> Self {
+		return Self(Some(value));
+	}
+
+	pub fn peek(& self) -> mlua::Result<& T> {
+		match &(self.0) {
+			Some(value) => {
+				return Ok(value);
+			},
+			None => {
+				todo!();
+			},
+		};
 	}
 }
 
-impl<T: FromLua> FromLua for LuaBox<T>{
-	fn from_lua(value: Value, lua: &Lua) -> mlua::Result<Self> {		
+impl<T: IntoLua> IntoLua for LuaHider<T> {
+fn into_lua(self, _: &Lua) -> mlua::Result<Value> {
+		return Ok(Value::Nil);
+	}
+}
+
+impl<T: FromLua> FromLua for LuaHider<T> {
+	fn from_lua(_: Value, _: &Lua) -> mlua::Result<Self> {
 		return Ok(
-			Self(
-				Box::new(
-					T::from_lua(value, lua)?
-				)
-			)
+			Self(None)
+		);
+	}
+}
+
+// Lua Rc
+#[derive(Clone, Deref, Debug)]
+pub struct LuaRc<T>(#[deref] pub(self) Rc<T>);
+
+impl<T> LuaRc<T> {
+	pub fn new(value: T) -> Self {
+		return Self(Rc::new(value));
+	}
+}
+
+impl<T: IntoLua> IntoLua for LuaRc<T> {
+	fn into_lua(self, _: &Lua) -> mlua::Result<Value> {
+		return Ok(Value::Nil);
+	}
+}
+
+impl<T: FromLua> FromLua for LuaRc<T> {
+	fn from_lua(value: Value, lua: &Lua) -> mlua::Result<Self> {
+		return Ok(
+			Self(Rc::new(T::from_lua(value, lua)?))
 		);
 	}
 }

@@ -3,12 +3,20 @@ pub mod my_mod;
 #[macro_use]
 extern crate time_test;
 
+#[allow(unused_imports)]
 #[macro_use]
 extern crate tracing;
 
 #[cfg(test)]
 mod tests {
-	use ::z_sharp::builder;
+	const TEST_SCRIPT: & str = "tests/test.zs";
+
+	use ::z_sharp::{
+		builder,
+		modification::{
+			Modification,
+		},
+	};
 
 	use crate::my_mod;
 
@@ -19,8 +27,19 @@ mod tests {
 		time_test!();
 		::tracing_subscriber::fmt::init();
 
+		let my_mod_result: Result<Modification, mlua::Error>  = my_mod::get();
+
+		match my_mod_result {
+			Ok(_) => {
+
+			},
+			Err(err) => {
+				panic!("{}", err);
+			}
+		};
+
 		let binding: builder::Config = builder::Config {
-			mods: vec![my_mod::get()],
+			mods: vec![my_mod_result.unwrap()],
 		};
   		let mut intermediate: builder::Intermediate = builder::new(
 			&binding
@@ -34,11 +53,9 @@ mod tests {
 			});
 		}));
 
-		intermediate.request_source("tests/test.zs".to_string()).await?;
+		intermediate.request_source(self::TEST_SCRIPT).await?;
 
-		intermediate.interpret().await?;
-
-		info!("Done!");
+		intermediate.interpret(self::TEST_SCRIPT).await?;
 
 		return Ok(());
 	}
