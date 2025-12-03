@@ -1,4 +1,5 @@
 use crate::config::VERSION;
+use crate::modification::capture::LogicConfig;
 use crate::modification::{
 	// consumer::{ Consumer, },
 	capture::{
@@ -16,33 +17,7 @@ use ::mlua::{
 
 use ::mlua::prelude::*;
 
-/// Exports the Z# standard library to Lua.
-pub fn z_sharp_std_lua_module(lua: & Lua, (): ()) -> mlua::Result<Table> {
-	let exports: Table = lua.create_table()?;
-
-	// TODO: Make this a struct
-	exports.set("console", lua.create_table_from(vec![
-		("log", lua.create_function(|_: & Lua, line: Value| {
-			info!("{:#?}", line);
-
-			return Ok(());
-		})?),
-		("warn", lua.create_function(|_: & Lua, line: Value| {
-			warn!("{:#?}", line);
-
-			return Ok(());
-		})?),
-		("error", lua.create_function(|_: & Lua, line: Value| {
-			error!("{:#?}", line);
-
-			return Ok(());
-		})?),
-	])?)?;
-
-	return Ok(exports);
-}
-
-/// Exports the Z# standard library to Lua.
+/// Exports the Z# internal library to Lua.
 ///
 /// This function creates a new table and populates it with the following values:
 ///
@@ -53,10 +28,11 @@ pub fn z_sharp_std_lua_module(lua: & Lua, (): ()) -> mlua::Result<Table> {
 ///     * `SingleConfig`: A new `'SingleConfig'` instance.
 ///     * `OrConfig`: A new `'OrConfig'` instance.
 ///     * `RepeatConfig`: A new `'RepeatConfig'` instance.
+/// - `console`: A table containing functions to log messages to the console.
 /// - `__UNSAFE__`: A table containing an unsafe function to create a new `'Gluea'` instance.
 ///
 /// The function returns a [`Result`] containing the created table on success, or a [`LuaError`] on failure.
-pub fn z_sharp_lua_module(lua: & Lua, (): ()) -> mlua::Result<Table> {
+pub fn load_z_sharp_lua_module(lua: & Lua, (): ()) -> mlua::Result<Table> {
 	let exports: Table = lua.create_table()?;
 
 	exports.set("version", [
@@ -71,7 +47,8 @@ pub fn z_sharp_lua_module(lua: & Lua, (): ()) -> mlua::Result<Table> {
 	lexer.set("SingleConfig", lua.create_proxy::<SingleConfig>()?)?;
 	lexer.set("OrConfig", lua.create_proxy::<OrConfig>()?)?;
 	lexer.set("RepeatConfig", lua.create_proxy::<RepeatConfig>()?)?;
-
+	lexer.set("ChildConfig", lua.create_proxy::<crate::modification::capture::ChildConfig>()?)?;
+	lexer.set("LogicConfig", lua.create_proxy::<LogicConfig>()?)?;
 
 	lexer.set("register_chain",
 		lua.create_function(move |lua: & Lua, chain: Chain| {
@@ -90,16 +67,31 @@ pub fn z_sharp_lua_module(lua: & Lua, (): ()) -> mlua::Result<Table> {
 			return Ok(());
 		})?
 	)?;
-
 	exports.set("lexer", lexer)?;
+
+	let console: Table = lua.create_table_from(vec![
+		("log", lua.create_function(|_: & Lua, line: Value| {
+			info!("{:#?}", line);
+
+			return Ok(());
+		})?),
+		("warn", lua.create_function(|_: & Lua, line: Value| {
+			warn!("{:#?}", line);
+
+			return Ok(());
+		})?),
+		("error", lua.create_function(|_: & Lua, line: Value| {
+			error!("{:#?}", line);
+
+			return Ok(());
+		})?),
+	])?;
+	exports.set("console", console)?;
+
 
 	// HACK (-) This exposes Z#'s internal registry to Lua!
 	// ! Be very careful with this!
-	// ? This `unsafe` block is unnecessary, but since this could lead to unexpected behavior, I will label it for now.
-	#[allow(unused_unsafe)]
-	unsafe {
-		exports.set("__UNSAFE__", create_unsafe_portion(lua)?)?;		
-	};
+	exports.set("__UNSAFE__", create_unsafe_portion(lua)?)?;		
 
 	return Ok(exports);
 }
@@ -112,7 +104,8 @@ pub fn create_unsafe_portion(lua: & Lua) -> mlua::Result<Table> {
 
 	exports.set("registry",
 		lua.create_table_from(vec![
-			("chains".to_string(), lua.create_table()?),
+			("whitespace".to_string(), lua.null()),
+			("chains".to_string(), lua.create_table()?.to_value()),
 		])?
 	)?;
 
@@ -132,20 +125,23 @@ pub fn new(name: &'static str, source: String) -> Result<Modification, LuaError>
 		LuaOptions::default()
 	)?;
 
+	let z_sharp_module: & Table = &load_z_sharp_lua_module(&lua, ())?;
+
+	lua.register_module("@z_sharp", z_sharp_module)?;
+
 	let globals: Table = lua.globals();
 
-	let preload: Table = globals
-		.get::<Table>("package")?
-		.get::<Table>("preload")?
-	;
+	globals.set("__Z_SHARP__", z_sharp_module)?;
 
-	preload.set("z_sharp_std", lua.create_function(z_sharp_std_lua_module)?)?;
-	preload.set("z_sharp", lua.create_function(z_sharp_lua_module)?)?;
+	lua.sandbox(true)?;
 
-	globals.set("__Z_SHARP_STD__", z_sharp_std_lua_module(&lua, ())?)?;
-	globals.set("__Z_SHARP__", z_sharp_lua_module(&lua, ())?)?;
-
-	lua.load(source).exec()?; // TODO: Handle errors?
+	match lua.load(source).exec() {
+		Ok(_) => { },
+		Err(err) => {
+			error!("Lua error: {}", err);
+			todo!();
+		},
+	};
 
 	return Ok(Modification { 
 		name: name,

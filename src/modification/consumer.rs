@@ -1,9 +1,11 @@
-use crate::modification::{
-	capture::{ Rule, },
-	gluea::{
-		LuaRc,
+use crate::{
+	modification::{
+		capture::Rule,
+		gluea::LuaRc,
 	},
 };
+
+
 
 use ::std::collections::HashMap;
 
@@ -32,16 +34,22 @@ nest! {
 		#[mlua_magic_macros::enumeration]
 		pub enum CaptureResultData {
 			Single,
-			Or(Results),
+			Or(ResultsMap),
 			Repeat(Vec<CaptureResult>),
+			Child(ResultsMap),
 			#[default]
-			None,
+			Unknown,
 		}>,
 		pub is_match: bool,
 	}
 }
 
-pub type Results = HashMap<String, CaptureResult>;
+#[mlua_magic_macros::implementation]
+impl CaptureResultData {
+
+}
+
+pub type ResultsMap = HashMap<String, CaptureResult>;
 
 mlua_magic_macros::compile!(type_path = CaptureResult, fields = true);
 
@@ -60,8 +68,8 @@ impl Consumer {
 
 impl Consumer {
 	#[allow(unused_labels)]
-	pub fn check(& self, rule: Rule, (results, text): (& LuaRc<&mut Results>, & str)) -> CaptureResult {
-		let mut result: CaptureResult = Default::default();
+	pub fn check(& self, rule: Rule, (results, text): (& LuaRc<&mut ResultsMap>, & str)) -> CaptureResult {
+		let mut result: CaptureResult = CaptureResult::default();
 
 		match & rule {
 			Rule::Single(config) => {
@@ -81,10 +89,10 @@ impl Consumer {
 			},
 
 			Rule::Or(config) => {
-				let mut sub_results: HashMap<String, CaptureResult> = HashMap::new();
+				let mut sub_results: ResultsMap = HashMap::new();
 				let mut offset: usize = 0;
 
-				info!("Config: {:#?}", config);
+				// info!("Config: {:#?}", config);
 
 				'or: for sub_rules in &config.rules_list {
 					'rules: for sub_rule in sub_rules.1 {
@@ -125,8 +133,10 @@ impl Consumer {
 				let mut reps: usize = 0;
 
 				if config.rules.is_empty() {
-					result.is_match = true; 
+					result.is_match = true; // ? Up to debate if this should be `false` or `true`.
 					
+					// Nothing to check.
+					return result;
 				};
 
 				'repeat: while reps < max_reps {
@@ -150,15 +160,36 @@ impl Consumer {
 					result.data = Some(CaptureResultData::Repeat(sub_results));
 					result.is_match = true;
 					result.captured = text[0 .. offset].to_string();
-				} else {
-					result.is_match = false;
+				};
+			},
+
+			Rule::Child(config) => {
+				let mut child_consumer: Consumer = config.child.create_consumer();
+				let child_result: (Option<ResultsMap>, bool, &str)= child_consumer.consume(text);
+
+				match child_result.0 {
+					Some(child_result_data) => {
+						// HACK (+) don't use `to_string`!
+						let remaining_text: & str = child_result.2; 
+						let captured_length: usize = text.len() - remaining_text.len();
+						result.captured = text[0 .. captured_length].to_string();
+
+						result.is_match = true;
+						result.data = Some(CaptureResultData::Child(child_result_data));
+					},
+					None => {
+						if !config.required.unwrap_or(false) {
+							result.is_match = true;
+						};
+					},
 				};
 			},
 
 			Rule::Logic(config) => {
 				// TODO: Add error handling.
 				if let Some(func) = &config.func {
-					let func_result: mlua::Result<bool> = func.call((***results).clone());
+					let input: ResultsMap = (***results).clone();
+					let func_result: mlua::Result<bool> = func.call(input);
 
 					match func_result {
 						Ok(is_match) => {
@@ -177,23 +208,24 @@ impl Consumer {
 				result.is_match = true;
 			},
 		};
+		// ! This won't always be reached.
+		// ! Don't rely on it.
 
 		return result;
 	}
 
-	pub fn consume<'a>(& mut self, text: &'a str) -> (Option<Results>, &'a str) {
+	pub fn consume<'a>(& mut self, text: &'a str) -> (Option<ResultsMap>, bool, &'a str) {
 		let mut remaining: & str = text;
 		let mut index: usize = 0;
 
-		let mut results: Results = HashMap::new();
+		let mut results: ResultsMap = HashMap::new();
 
 		while index < self.rules.len() {
 			let rule: Rule = self.rules[index].clone();
 			let result: CaptureResult = self.check(rule.clone(), (&LuaRc::new(&mut results), remaining));
 
 			if !result.is_match {
-				info!("{}", text);
-				return (None, text);
+				return (None, false, text);
 			};
 
 			index += 1;
@@ -206,6 +238,6 @@ impl Consumer {
 			
 		};
 
-		return (Some(results), remaining);
+		return (Some(results), true, remaining);
 	}
 }

@@ -16,6 +16,10 @@ pub mod builder {
 	use ::std::future::{ Future, };
 	use ::std::pin::{ Pin, };
 
+	use ::anyhow::{
+		Result,
+	};
+
 	use ::derive_more::with_trait::{
 		Display,
 	};
@@ -144,7 +148,7 @@ pub mod builder {
 				let last_length: usize = remaining.len();
 
 				for ref mut consumer in &mut self.consumers {
-					remaining = consumer.consume(remaining).1;
+					remaining = consumer.consume(remaining).2;
 
 					// info!("Consumer: \"{:#?}\"", consumer);
 				};

@@ -61,10 +61,6 @@ impl IntoLua for Gluea {
 
 		let metatable: Table = lua.create_table()?;
 
-		metatable.set("__tostring", lua.create_function(|_: & Lua, (): ()| {
-			return Ok("Gluea");
-		})?)?;
-
 		gluea_table.set_metatable(Some(metatable))?;
 
 		return Ok(Value::Table(gluea_table));

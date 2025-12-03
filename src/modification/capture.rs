@@ -1,9 +1,11 @@
-use crate::modification::{
-	consumer::Consumer,
-	gluea::{
-		Gluea,
-		LuaHider,
-		LuaRc,
+use crate::{
+	modification::{
+		consumer::Consumer,
+		gluea::{
+			Gluea,
+			LuaHider,
+			LuaRc,
+		},
 	},
 };
 
@@ -96,6 +98,30 @@ impl SingleConfig {
 
 mlua_magic_macros::compile!(type_path = SingleConfig, fields = true, methods = true);
 
+#[derive(Clone, Debug)]
+#[mlua_magic_macros::structure]
+pub struct ChildConfig {
+	pub name: Option<String>,
+	pub child: LuaRc<Chain>, // Prevent recursive types.
+	pub required: Option<bool>,
+}
+
+// TODO: Refactor.
+#[mlua_magic_macros::implementation]
+impl ChildConfig {
+	pub fn new(table: Table) -> mlua::Result<Self> {
+		return Ok(
+			Self {
+				name: table.get("name")?,
+				child: table.get("child")?,
+				required: table.get("required")?,
+			}
+		);
+	}
+}
+
+mlua_magic_macros::compile!(type_path = ChildConfig, fields = true, methods = true);
+
 #[derive(Clone, Default, Debug)]
 #[mlua_magic_macros::structure]
 pub struct LogicConfig {
@@ -104,10 +130,10 @@ pub struct LogicConfig {
 
 #[mlua_magic_macros::implementation]
 impl LogicConfig {
-	pub fn new(func: Function) -> mlua::Result<Self> {
+	pub fn new(table: Table) -> mlua::Result<Self> {
 		return Ok(
 			Self {
-				func: Some(func),
+				func: table.get("func")?,
 			}
 		);
 	}
@@ -129,6 +155,7 @@ nest! {
 				Single(SingleConfig),
 				Or(OrConfig),
 				Repeat(RepeatConfig),
+				Child(ChildConfig),
 				Logic(LogicConfig),
 				#[default]
 				None,
@@ -143,10 +170,9 @@ mlua_magic_macros::compile!(type_path = Rule, variants = true);
 #[mlua_magic_macros::implementation]
 impl Chain {
 	#[allow(unreachable_code, unused_variables, clippy::diverging_sub_expression)]
-	pub fn new(name: String, gluea: Gluea) -> Self {
+	pub fn new(name: String, gluea: Gluea) -> mlua::Result<Self> {
 		let table: Table = (*gluea.borrow())
-			.create_table()
-			.unwrap()
+			.create_table()?
 		;
 
 		let instance: Self = Self {
@@ -156,7 +182,7 @@ impl Chain {
 			table: table,
 		};
 
-		return instance;
+		return Ok(instance);
 	}
 
 	pub fn create_consumer(& self) -> Consumer {
@@ -167,35 +193,6 @@ impl Chain {
 
 	// Captures text with Regex
 	pub fn capture(& mut self, rule: Rule) -> mlua::Result<()> {
-		self.rules.push(rule);
-
-		return Ok(());
-	}
-
-	// Removes whitespace.
-	pub fn trim(& mut self, required_option: Option<bool>) -> mlua::Result<()> {
-		// TODO: Make this configurable.
-		let mut pattern: String = "\\s*".to_string();
-		if let Some(required) = required_option && required {
-			pattern = "\\s+".to_string();
-		};
-
-		let rule: Rule = Rule::Single(SingleConfig {
-			name: None,
-			pattern: pattern,
-			required: Some(false), // Actually, false doesn't mean much here, but just in case let's keep it here until we make it configurable.
-		});
-
-		self.rules.push(rule);
-
-		return Ok(());
-	}
-
-	// Define logic for capture group.
-	// TODO: Improve logic capabilities.
-	pub fn logic(& mut self, func: Function) -> mlua::Result<()> {
-		let rule: Rule = Rule::Logic(LogicConfig::new(func).unwrap()); // TODO: Error handling?
-
 		self.rules.push(rule);
 
 		return Ok(());
