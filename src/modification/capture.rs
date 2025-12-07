@@ -109,7 +109,7 @@ pub struct ChildConfig {
 // TODO: Refactor.
 #[mlua_magic_macros::implementation]
 impl ChildConfig {
-	pub fn new(table: Table) -> mlua::Result<Self> {
+	pub fn new(table: Table) -> ::mlua::Result<Self> {
 		return Ok(
 			Self {
 				name: table.get("name")?,
@@ -130,7 +130,7 @@ pub struct LogicConfig {
 
 #[mlua_magic_macros::implementation]
 impl LogicConfig {
-	pub fn new(table: Table) -> mlua::Result<Self> {
+	pub fn new(table: Table) -> ::mlua::Result<Self> {
 		return Ok(
 			Self {
 				func: table.get("func")?,
@@ -147,7 +147,6 @@ nest! {
 	pub struct Chain {
 		pub(crate) glue: LuaHider<Gluea>, // Hide this with mlua-magic-macros. Add a new macro '#[mlua_magic_macros::hidden]'
 		pub name: String,
-		pub table: Table,
 		pub rules: Vec<
 			#[derive(Clone, Default, Debug)]
 			#[mlua_magic_macros::enumeration]
@@ -161,6 +160,7 @@ nest! {
 				None,
 			}
 		>,
+		properties: HashMap<String, String>,
 	}
 }
 
@@ -170,16 +170,13 @@ mlua_magic_macros::compile!(type_path = Rule, variants = true);
 #[mlua_magic_macros::implementation]
 impl Chain {
 	#[allow(unreachable_code, unused_variables, clippy::diverging_sub_expression)]
-	pub fn new(name: String, gluea: Gluea) -> mlua::Result<Self> {
-		let table: Table = (*gluea.borrow())
-			.create_table()?
-		;
+	pub fn new(name: String, gluea: Gluea) -> ::mlua::Result<Self> {
 
 		let instance: Self = Self {
 			name: name,
 			glue: LuaHider::new(gluea),
 			rules: Vec::new(),
-			table: table,
+			properties: HashMap::new(),
 		};
 
 		return Ok(instance);
@@ -192,17 +189,23 @@ impl Chain {
 	}
 
 	// Captures text with Regex
-	pub fn capture(& mut self, rule: Rule) -> mlua::Result<()> {
+	pub fn capture(& mut self, rule: Rule) -> ::mlua::Result<()> {
 		self.rules.push(rule);
 
 		return Ok(());
 	}
 
 	// Complete the Chain.
-	pub fn done(& mut self) -> mlua::Result<()> {
+	pub fn done(& mut self) -> ::mlua::Result<()> {
 		// info!("Rules: {:#?}", self.rules);
 
 		// TODO: Make the chain immutable.
+
+		return Ok(());
+	}
+
+	pub fn set_property(& mut self, key: String, value: String) -> ::mlua::Result<()> {
+		self.properties.insert(key, value);
 
 		return Ok(());
 	}

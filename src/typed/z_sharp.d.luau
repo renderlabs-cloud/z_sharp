@@ -18,38 +18,45 @@ z_sharp.console = {
 -- # lexer
 z_sharp.lexer = {};
 
-type SingleConfig = {
+export type SingleConfig = {
 	name: string?,
 	pattern: string,
 	required: boolean?,
 };
 
-type OrConfig = {
+export type OrConfig = {
 	name: string?,
 	rules_list: { Rule },
 	required: boolean?,
 };
 
-type RepeatConfig = {
+export type RepeatConfig = {
 	name: string?,
 	rules: { Rule },
 	min: number?,
 	max: number?,
+	required: boolean?,
 };
 
-type LogicConfig = {
+export type ChildConfig = {
 	name: string?,
+	child: Chain,
+	required: boolean?,
+};
+
+export type LogicConfig = {
 	func: () -> boolean,
 };
 
-type Rule = {
+export type Rule = {
 	Single: (SingleConfig) -> any,
 	Or: (OrConfig) -> any,
 	Repeat: (RepeatConfig) -> any,
+	Child: (ChildConfig) -> any,
 	Logic: (LogicConfig) -> any,
 };
 
-type Chain = {
+export type Chain = {
 	capture: (Rule) -> (),
 };
 
@@ -59,3 +66,4 @@ z_sharp.Chain = {
 	end,
 };
 
+return z_sharp;

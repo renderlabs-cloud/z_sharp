@@ -1,10 +1,11 @@
-use crate::config::VERSION;
-use crate::modification::capture::LogicConfig;
+use crate::config::{
+	VERSION,
+};
 use crate::modification::{
 	// consumer::{ Consumer, },
 	capture::{
 		Chain, Rule,
-		SingleConfig, OrConfig, RepeatConfig,
+		SingleConfig, OrConfig, RepeatConfig, LogicConfig,
 	},
 	Modification,
 };
@@ -71,17 +72,17 @@ pub fn load_z_sharp_lua_module(lua: & Lua, (): ()) -> mlua::Result<Table> {
 
 	let console: Table = lua.create_table_from(vec![
 		("log", lua.create_function(|_: & Lua, line: Value| {
-			info!("{:#?}", line);
+			::log::info!("{:#?}", line);
 
 			return Ok(());
 		})?),
 		("warn", lua.create_function(|_: & Lua, line: Value| {
-			warn!("{:#?}", line);
+			::log::warn!("{:#?}", line);
 
 			return Ok(());
 		})?),
 		("error", lua.create_function(|_: & Lua, line: Value| {
-			error!("{:#?}", line);
+			::log::error!("{:#?}", line);
 
 			return Ok(());
 		})?),
@@ -138,8 +139,8 @@ pub fn new(name: &'static str, source: String) -> Result<Modification, LuaError>
 	match lua.load(source).exec() {
 		Ok(_) => { },
 		Err(err) => {
-			error!("Lua error: {}", err);
-			todo!();
+			::log::error!("{}", t!("Luau.error"));
+			return Err(err);
 		},
 	};
 

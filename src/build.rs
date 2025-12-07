@@ -1,27 +1,27 @@
 pub mod builder {
 	use crate::modification::{
-			Modification,
-			capture::{
-				Chain,
-				Rule,
-				SingleConfig,
-			},
-			consumer::{
-				Consumer,
-			},
-			// gluea::{ Gluea, },
-		};
+		Modification,
+		capture::{
+			Chain,
+			Rule,
+			SingleConfig,
+		},
+		consumer::{
+			Consumer,
+			ResultsMap as ConsumerResultsMap,
+		},
+		// gluea::{ Gluea, },
+	};
 
 	use ::std::collections::{ HashMap, };
 	use ::std::future::{ Future, };
 	use ::std::pin::{ Pin, };
+	use ::std::time::{
+		Instant,
+	};
 
 	use ::anyhow::{
 		Result,
-	};
-
-	use ::derive_more::with_trait::{
-		Display,
 	};
 
 	use ::mlua::{
@@ -49,7 +49,23 @@ pub mod builder {
 		pub source_resolvers: Vec<SourceResolver>,
 	}
 
+	#[derive(Debug)]
+	pub struct Position {
+		pub line: u32,
+		pub column: u32,
+	}
+
+	#[derive(Debug)]
+	pub enum Error {
+		NoConsumers,
+		NoMatches(Position),
+		NoSourceResolversAvailable,
+		NoSourceResolversAvailableFor(String),
+		LuauError,
+	}
+
 	impl<'a> Intermediate<'a> {
+
 		/// Creates a new `Intermediate` instance.
 		///
 		/// This function takes a reference to a `Config` instance and creates a new `Intermediate` instance with the provided configuration.
@@ -108,9 +124,7 @@ pub mod builder {
 			
 			if set.is_empty() {
 				#[allow(unreachable_code)]
-				return Err(self::Error {
-					message: todo!(),
-				});
+				return Err(self::Error::NoSourceResolversAvailableFor(name.to_string()));
 			};
 
 			while let Some(join_result) = set.join_next().await {
@@ -122,7 +136,7 @@ pub mod builder {
 						};
  					},
 					Err(err) => {
-						error!("{}", err);
+						::log::error!("{}", err);
 						todo!();
 					},
 				};
@@ -136,49 +150,60 @@ pub mod builder {
 		/// This function will loop through all the consumers and consume the source
 		/// until no progress is made. If no progress is made, an error will be
 		/// returned.
-		pub async fn interpret(& mut self, entry: & str) -> Result<(/* Replace with something when you are ready. */), self::Error> {
+		pub async fn interpret(&mut self, entry: & str) -> Result<(), self::Error> {
 			// TODO: Blocks, ...etc.
+			let start_time: Instant = Instant::now();
 
 			let source: & str = &(self.sources[entry]);
 
 			// HACK (+) `source` is never cloned!
 			let mut remaining: & str = source;
 
-			while !remaining.is_empty() {
-				let last_length: usize = remaining.len();
-
-				for ref mut consumer in &mut self.consumers {
-					remaining = consumer.consume(remaining).2;
-
-					// info!("Consumer: \"{:#?}\"", consumer);
-				};
-
-				info!("Characters remaining: {}", remaining.len());
-
-				if remaining.len() == last_length {
-					// # No progress was made.
-					// TODO: Add error handling
-
-					error!("Remaining text!: \"{}\"", remaining);
-					todo!();
-				};
+			if self.consumers.is_empty() {
+				#[allow(unreachable_code)]
+				return Err(self::Error::NoConsumers);
 			};
 
-			info!("No text remaining!");
+			'capture_loop:
+			while !remaining.is_empty() {
+				let results: Vec<(Option<ConsumerResultsMap>, bool, & str)>= self.consumers
+					.iter_mut()
+					.map(|consumer: &mut Consumer| -> (Option<ConsumerResultsMap>, bool, & str) {
+						return consumer.consume(remaining);
+					})
+					.collect::<Vec<_>>()
+				;
+				let mut was_matched: bool = false;
+
+				'consumer_loop: 
+				for output in results.iter() {
+					if !output.1 {
+						continue 'consumer_loop;
+					};
+
+					remaining = output.2;
+					was_matched = true;
+
+					if remaining.is_empty() {
+						break 'capture_loop;
+					};
+				};
+
+				if !was_matched {
+					#[allow(unreachable_code)]
+					return Err(self::Error::NoMatches(self::Position {
+						line: 0,
+						column: 0,
+					})); // TODO: Implement position.
+				};
+
+				::log::info!("Characters remaining: {}", remaining.len());
+			};
+
+			let end_time: Instant = Instant::now();
+			::log::info!("Interpretation took {}ms.", end_time.duration_since(start_time).as_millis());
 
 			return Ok(());
-		}
-	}
-
-	// TODO: Make error type printable.
-	#[derive(Debug)]
-	pub struct Error {
-		message: String,
-	}
-
-	impl Display for Error {
-		fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-			return write!(f, "{}", self.message);
 		}
 	}
 
@@ -192,7 +217,7 @@ pub mod builder {
 		let mut consumers: Vec<Consumer> = Vec::new();
 		
 		for mod_ in &config.mods {
-			let get_chains_result: mlua::Result<Vec<Chain>> = mod_.lua.globals().get_path::<Vec<Chain>>("__Z_SHARP__.__UNSAFE__.registry.chains");
+			let get_chains_result: ::mlua::Result<Vec<Chain>> = mod_.lua.globals().get_path::<Vec<Chain>>("__Z_SHARP__.__UNSAFE__.registry.chains");
 			
 			match get_chains_result {
 				Ok(chains_gotten) => {
@@ -204,13 +229,11 @@ pub mod builder {
 							.collect::<Vec<_>>()							
 					);
 				},
-				Err(err) => {
+				Err(_) => {
 					// # The __Z_SHARP__ internal proxy has failed.
-					// This is either a bug, or a user error.
-					// TODO: Update logging methods.
+					// This is a serious user error.
 					
-					error!("{}", err);
-					todo!(); // TODO: Add error handling.
+					return Err(self::Error::LuauError);
 				},
 			};
 		}

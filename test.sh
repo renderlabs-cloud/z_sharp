@@ -8,11 +8,13 @@ echo "$PPP" | gcc -P -x assembler-with-cpp -
 
 rm a.out
 
-export RUSTFLAGS="-C instrument-coverage -C link-args=-Wl,-Bdynamic -llua5.4"
+export RUSTFLAGS="-C link-args=-Wl,-Bdynamic -llua5.4"
 export RUST_BACKTRACE=1
 
-export LLVM_PROFILE_FILE="tests/coverage/default_%m_%p.profraw"
+bash ./src/standard/build.sh
 
-cargo test
+# export LLVM_PROFILE_FILE="tests/coverage/default_%m_%p.profraw"
+
+cargo test -- --nocapture
 
 # ~/.cargo/bin/grcov tests/coverage/ --binary-path ./target/debug/deps/ -s . -t html -o target/coverage/html/

@@ -4,3 +4,5 @@ sudo apt-get install liblua5.4-dev
 
 # cargo install grcov
 # rustup component add llvm-tools-preview
+
+cargo install darklua

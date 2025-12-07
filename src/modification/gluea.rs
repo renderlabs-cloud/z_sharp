@@ -83,7 +83,7 @@ impl<T> LuaHider<T> {
 		return Self(Some(value));
 	}
 
-	pub fn peek(& self) -> mlua::Result<& T> {
+	pub fn peek(& self) -> ::mlua::Result<& T> {
 		match &(self.0) {
 			Some(value) => {
 				return Ok(value);
@@ -96,13 +96,13 @@ impl<T> LuaHider<T> {
 }
 
 impl<T: IntoLua> IntoLua for LuaHider<T> {
-fn into_lua(self, _: &Lua) -> mlua::Result<Value> {
+fn into_lua(self, _: &Lua) -> ::mlua::Result<Value> {
 		return Ok(Value::Nil);
 	}
 }
 
 impl<T: FromLua> FromLua for LuaHider<T> {
-	fn from_lua(_: Value, _: &Lua) -> mlua::Result<Self> {
+	fn from_lua(_: Value, _: &Lua) -> ::mlua::Result<Self> {
 		return Ok(
 			Self(None)
 		);

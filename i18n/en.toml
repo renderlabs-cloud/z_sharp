@@ -1,0 +1,8 @@
+[Luau]
+	[Luau.errors]
+		rumtime_error = "Luau error: %{error}"
+		proxy_failure = "Internal proxy failure — cannot continue."
+
+[errors]
+	no_consumers = "No consumers found. At least one consumer is required to interact with a source."
+	no_matches = "No matches found at `%{position}`."

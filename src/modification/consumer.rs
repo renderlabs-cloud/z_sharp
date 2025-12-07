@@ -75,9 +75,9 @@ impl Consumer {
 			Rule::Single(config) => {
 				result.name = config.name.clone();
 
-				let regex: Regex = Regex::new(
+				let regex: Regex = unwrap!(Regex::new(
 					&(config.pattern.clone().to_string())
-				).unwrap();
+				));
 
 				let capture: Option<Match<'_>> = regex.find(text);
 
@@ -98,7 +98,7 @@ impl Consumer {
 					'rules: for sub_rule in sub_rules.1 {
 						let sub_result: CaptureResult = self.check(sub_rule.clone(), (results, text));
 						
-						info!("Sub result: {:#?}", sub_result);
+						::log::info!("Sub result: {:#?}", sub_result);
 						if sub_result.is_match {
 							offset += sub_result.captured.len();
 
@@ -139,8 +139,10 @@ impl Consumer {
 					return result;
 				};
 
-				'repeat: while reps < max_reps {
-					'rules: for rule in &config.rules {
+				'repeat:
+				while reps < max_reps {
+					'rules:
+					for rule in &config.rules {
 						let sub_result: CaptureResult = self.check(rule.clone(), (results, &text[offset..])); // TODO: Optimize?
 
 						if sub_result.is_match {

@@ -1,0 +1,22 @@
+// # Default darklua configuration file for Z#.
+
+{
+	"bundle": {
+		"modules_identifier": "__DARKLUA_BUNDLE_MODULES",
+		"excludes": [
+			"@z_sharp"
+		],
+		"require_mode": {
+			"name": "path",
+			"module_folder_name": "init",
+			"sources": {
+				"@pkg": "./Packages",
+				"@self": "./src"
+			},
+			"use_luau_configuration": true
+		}
+	},
+	"rules": [
+		// ... other darklua rules ...
+	]
+}
