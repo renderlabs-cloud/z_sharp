@@ -1,10 +1,10 @@
 --!strict
---[[
--- # Type declarations for the Z# internal library.
----- @Author Brendan Lucas
-----
--- ? This file does not contain any functionality.
---]]
+--[=[
+	Type declarations for the Z# internal library.
+	This file does not contain any functionality.
+
+	@Author Brendan Lucas
+--]=]
 
 local z_sharp = {};
 
@@ -16,54 +16,8 @@ z_sharp.console = {
 };
 
 -- # lexer
-z_sharp.lexer = {};
+local lexer = require('@src/lexer.d.luau');
 
-export type SingleConfig = {
-	name: string?,
-	pattern: string,
-	required: boolean?,
-};
-
-export type OrConfig = {
-	name: string?,
-	rules_list: { Rule },
-	required: boolean?,
-};
-
-export type RepeatConfig = {
-	name: string?,
-	rules: { Rule },
-	min: number?,
-	max: number?,
-	required: boolean?,
-};
-
-export type ChildConfig = {
-	name: string?,
-	child: Chain,
-	required: boolean?,
-};
-
-export type LogicConfig = {
-	func: () -> boolean,
-};
-
-export type Rule = {
-	Single: (SingleConfig) -> any,
-	Or: (OrConfig) -> any,
-	Repeat: (RepeatConfig) -> any,
-	Child: (ChildConfig) -> any,
-	Logic: (LogicConfig) -> any,
-};
-
-export type Chain = {
-	capture: (Rule) -> (),
-};
-
-z_sharp.Chain = {
-	new = function (name): Chain
-		return {} :: Chain;
-	end,
-};
+z_sharp.lexer = lexer;
 
 return z_sharp;

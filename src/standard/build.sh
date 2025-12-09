@@ -7,5 +7,5 @@ SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 
 (
 	cd "$SCRIPT_DIR" && 
-	darklua process --config ".darklua.jsonc" -vvv "src/core.luau" "core.luau"
+	darklua process --config ".darklua.jsonc" -vvv "src/init.luau" "init.luau"
 )

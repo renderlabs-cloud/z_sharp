@@ -17,6 +17,10 @@ use ::std::{
 	},
 };
 
+use ::serde::{
+	Serialize,
+};
+
 
 use ::derive_more::{
 	with_trait::{
@@ -110,7 +114,7 @@ impl<T: FromLua> FromLua for LuaHider<T> {
 }
 
 // Lua Rc
-#[derive(Clone, Deref, Debug)]
+#[derive(Clone, Deref, Serialize, Debug)]
 pub struct LuaRc<T>(#[deref] pub(self) Rc<T>);
 
 impl<T> LuaRc<T> {

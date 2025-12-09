@@ -1,13 +1,13 @@
 --!strict
---[[
--- # Semantics.
---]]
+--[=[
 
+--]=]
 local z_sharp = require('@z_sharp');
 
 local Whitespace = {
 	chain = (function ()
-		local chain = z_sharp.lexer.Chain.new('whitespace');
+		local chain: z_sharp.Chain = z_sharp.lexer.Chain.new('whitespace');
+		
 
 		chain:capture(
 			z_sharp.lexer.Rule.Single(

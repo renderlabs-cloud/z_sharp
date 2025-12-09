@@ -1,4 +1,4 @@
-// # Default darklua configuration file for Z#.
+// Default darklua configuration file for Z#.
 
 {
 	"bundle": {
@@ -10,7 +10,7 @@
 			"name": "path",
 			"module_folder_name": "init",
 			"sources": {
-				"@pkg": "./Packages",
+				"@pkg": "./Packages", // Common within the Roblox community, so I will use it myself.
 				"@self": "./src"
 			},
 			"use_luau_configuration": true

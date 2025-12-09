@@ -37,7 +37,7 @@ This Code of Conduct applies to all community spaces associated with the Z# proj
 
 ## **5. Reporting Violations**
 
-Concerns, violations, or questions may be reported to the project maintainers through the designated channels (e.g., official email, GitHub reporting tools). Reports will be handled promptly, respectfully, and confidentially.
+Concerns, violations, or questions may be reported to the project maintainers through the designated channels (e.g., official email, GitHub reporting tools, Discord server). Reports will be handled confidentially.
 
 ## **6. Enforcement**
 

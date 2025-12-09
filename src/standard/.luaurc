@@ -6,6 +6,6 @@
 		"*": true
 	},
 	"aliases":{
-		"z_sharp": "src/typed/z_sharp.d.luau"
+		"src": "src"
 	}
 }

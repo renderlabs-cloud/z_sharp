@@ -1,15 +1,13 @@
-pub mod my_mod;
+pub mod standard;
 
 #[macro_use]
 extern crate time_test;
-
-#[macro_use]
-extern crate unwrap;
 
 #[cfg(test)]
 mod tests {
 	// HACK (+) Don't recompile for changes in `test.zs`.
 	const TEST_SCRIPT: & str = "tests/test.zs";
+
 
 	use ::z_sharp::{
 		builder,
@@ -18,7 +16,7 @@ mod tests {
 		},
 	};
 
-	use crate::my_mod;
+	use crate::standard;
 
 	use ::tokio::{ fs, };
 
@@ -27,20 +25,17 @@ mod tests {
 		time_test!();
 		::tracing_subscriber::fmt::init();
 
-		let my_mod_result: Result<Modification, ::mlua::Error>  = my_mod::get();
-
-		match my_mod_result {
-			Ok(_) => {
-
-			},
+		let my_mod: Modification = match standard::get() {
+			Ok(mod_) => mod_,
 			Err(err) => {
-				panic!();
-			}
+				::log::error!("{:#?}", err);
+				return Err(builder::Error::LuauError);
+			},
 		};
 
 		let binding: builder::Config = builder::Config {
 			mods: vec![
-				unwrap!(my_mod_result),
+				my_mod,
 			],
 		};
 

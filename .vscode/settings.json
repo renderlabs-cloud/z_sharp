@@ -1,3 +1,6 @@
 {
-	"luau-lsp.sourcemap.enabled": false
+	"luau-lsp.sourcemap.enabled": false,
+	"flow-icons.folders.associations": {
+		"macros": "console",
+	},
 }

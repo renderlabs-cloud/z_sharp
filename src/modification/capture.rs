@@ -12,7 +12,12 @@ use crate::{
 use ::mlua::{
 	Table, Function,
 };
+
 // use ::mlua::prelude::*;
+
+use ::serde::{
+	Serialize,
+};
 
 use ::std::{
 	collections::HashMap,
@@ -32,23 +37,7 @@ pub struct RepeatConfig {
 	pub max: Option<usize>,
 }
 
-// TODO: Refactor.
-#[mlua_magic_macros::implementation]
-impl RepeatConfig {
-	pub fn new(table: Table) -> mlua::Result<Self> {
-		return Ok(
-			Self {
-				name: table.get("name")?,
-				rules: table.get("rules")?,
-				seperator: table.get("seperator")?,
-				min: table.get("min")?,
-				max: table.get("max")?,
-			}
-		);
-	}
-}
-
-mlua_magic_macros::compile!(type_path = RepeatConfig, fields = true, methods = true);
+mlua_magic_macros::compile!(type_path = RepeatConfig, fields = true);
 
 #[derive(Clone, Default, Debug)]
 #[mlua_magic_macros::structure]
@@ -58,21 +47,7 @@ pub struct OrConfig {
 	pub required: Option<bool>,
 }
 
-// TODO: Refactor.
-#[mlua_magic_macros::implementation]
-impl OrConfig {
-	pub fn new(table: Table) -> mlua::Result<Self> {
-		return Ok(
-			Self {
-				name: table.get("name")?,
-				rules_list: table.get("rules_list")?,
-				required: table.get("required")?,
-			}
-		);
-	}
-}
-
-mlua_magic_macros::compile!(type_path = OrConfig, fields = true, methods = true);
+mlua_magic_macros::compile!(type_path = OrConfig, fields = true);
 
 #[derive(Clone, Default, Debug)]
 #[mlua_magic_macros::structure]
@@ -82,23 +57,9 @@ pub struct SingleConfig {
 	pub required: Option<bool>,
 }
 
-// TODO: Refactor.
-#[mlua_magic_macros::implementation]
-impl SingleConfig {
-	pub fn new(table: Table) -> mlua::Result<Self> {
-		return Ok(
-			Self {
-				name: table.get("name")?,
-				pattern: table.get("pattern")?,
-				required: table.get("required")?,
-			}
-		);
-	}
-}
+mlua_magic_macros::compile!(type_path = SingleConfig, fields = true);
 
-mlua_magic_macros::compile!(type_path = SingleConfig, fields = true, methods = true);
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Serialize, Debug)]
 #[mlua_magic_macros::structure]
 pub struct ChildConfig {
 	pub name: Option<String>,
@@ -106,21 +67,7 @@ pub struct ChildConfig {
 	pub required: Option<bool>,
 }
 
-// TODO: Refactor.
-#[mlua_magic_macros::implementation]
-impl ChildConfig {
-	pub fn new(table: Table) -> ::mlua::Result<Self> {
-		return Ok(
-			Self {
-				name: table.get("name")?,
-				child: table.get("child")?,
-				required: table.get("required")?,
-			}
-		);
-	}
-}
-
-mlua_magic_macros::compile!(type_path = ChildConfig, fields = true, methods = true);
+mlua_magic_macros::compile!(type_path = ChildConfig, fields = true);
 
 #[derive(Clone, Default, Debug)]
 #[mlua_magic_macros::structure]
