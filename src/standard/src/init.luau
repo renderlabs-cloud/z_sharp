@@ -12,16 +12,22 @@
 local z_sharp = require('@z_sharp');
 
 local lexer = z_sharp.lexer;
+local console = z_sharp.console;
 
 -- Register these chains.
 local chains = {
-	Function = require('@self/chains/function.luau'),
+	Test = require('@src/features/test.luau'),
+	-- Structure = require('@src/features/structure.luau'),
+
+	-- Function = require('@src/features/function.luau'),
 	
-	Whitespace = require('@self/chains/whitespace.luau'),
+	-- Whitespace = require('@src/features/whitespace.luau'),
 };
 
 for _, chain in pairs(chains) do
 	lexer.register_chain(chain.chain);
 end;
 
-_G.__Z_SHARP__.__UNSAFE__.registry = nil; -- Sabotage the Luau proxy for testing purposes.
+console.log('Registered chains.');
+
+-- _G.__Z_SHARP__.__UNSAFE__.registry = nil; -- Sabotage the Luau proxy for testing purposes.

@@ -1,3 +1,1 @@
-function foo(): Bar {
-	
-}
+test

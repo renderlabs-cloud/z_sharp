@@ -1,32 +1,34 @@
 --!strict
---[=[
-	Function declatation.
---]=]
 
 local z_sharp = require('@z_sharp');
 
 local lexer = z_sharp.lexer;
 
-local patterns = {
-	IDENTIFIER = '[a-zA-Z_$][a-zA-Z0-9_$]+',
-}; -- require('patterns.luau'); -- Load local files.
+local patterns = require('@src/patterns.luau');
 
-local Whitespace = require('@src/chains/whitespace.luau');
+local Whitespace = require('@src/features/whitespace.luau');
 
-local Function = {
+local Function: z_sharp.ChainImpl = {
 	chain = (function ()
 		local chain = lexer.Chain.new('function');
-		
+			
+		-- TODO: Convert to list form?
 		chain:capture(
-			lexer.Rule.Single({
-				name = nil,
-				pattern = 'function',
-				required = true,
-			})
+			lexer.Rule.Single(
+				lexer.SingleConfig.new({
+					pattern = 'func',
+					required = true,
+				})
+			)
 		);
 
 		chain:capture(
-			Whitespace.child(true)
+			lexer.Rule.Child(
+				lexer.ChildConfig.new({
+					child = Whitespace.chain,
+					required = true,
+				})
+			)
 		);
 
 		chain:capture(
@@ -40,13 +42,17 @@ local Function = {
 		);
 
 		chain:capture(
-			Whitespace.child(false)
+			lexer.Rule.Child(
+				lexer.ChildConfig.new({
+					child = Whitespace.chain,
+					required = false,
+				})
+			)
 		);
 
 		chain:capture(
 			lexer.Rule.Single(
 				lexer.SingleConfig.new({
-					name = nil,
 					pattern = '\\(',
 					required = true,
 				})
@@ -54,7 +60,12 @@ local Function = {
 		);
 
 		chain:capture(
-			Whitespace.child(false)
+			lexer.Rule.Child(
+				lexer.ChildConfig.new({
+					child = Whitespace.chain,
+					required = true,
+				})
+			)
 		);
 
 		-- TODO: Function parameters.
@@ -62,7 +73,6 @@ local Function = {
 		chain:capture(
 			lexer.Rule.Single(
 				lexer.SingleConfig.new({
-					name = nil,
 					pattern = '\\)',
 					required = true,
 				})
@@ -70,13 +80,17 @@ local Function = {
 		);
 
 		chain:capture(
-			Whitespace.child(false)
+			lexer.Rule.Child(
+				lexer.ChildConfig.new({
+					child = Whitespace.chain,
+					required = false,
+				})
+			)
 		);
 
 		chain:capture(
 			lexer.Rule.Single(
 				lexer.SingleConfig.new({
-					name = nil,
 					pattern = '\\:',
 					required = true,
 				})
@@ -84,13 +98,17 @@ local Function = {
 		);
 
 		chain:capture(
-			Whitespace.child(false)
+			lexer.Rule.Child(
+				lexer.ChildConfig.new({
+					child = Whitespace.chain,
+					required = false,
+				})
+			)
 		);
 
 		chain:capture(
 			lexer.Rule.Single(
 				lexer.SingleConfig.new({
-					name = nil,
 					pattern = patterns.IDENTIFIER, -- TODO: Replace with type.
 					required = true,
 				})
@@ -98,14 +116,18 @@ local Function = {
 		);
 
 		chain:capture(
-			Whitespace.child(false)
+			lexer.Rule.Child(
+				lexer.ChildConfig.new({
+					child = Whitespace.chain,
+					required = false,
+				})
+			)
 		);
 
 		-- TODO: Use section instead of `{` and `}`.
 		chain:capture(
 			lexer.Rule.Single(
 				lexer.SingleConfig.new({
-					name = nil,
 					pattern = '\\{',
 					required = true,
 				})
@@ -115,34 +137,19 @@ local Function = {
 		-- TODO: Function body.
 
 		chain:capture(
-			Whitespace.child(false)
-		);
-
-		chain:capture(
 			lexer.Rule.Single(
 				lexer.SingleConfig.new({
-					name = nil,
 					pattern = '\\}',
 					required = true,
 				})
 			)
 		);
-		
-		chain:capture(
-			lexer.Rule.Logic(
-				lexer.LogicConfig.new({
-					func = function (results): boolean
-						z_sharp.console.log(results.identifier.data);
-						return true;
-					end,
-				})
-			)
-		);
-
-		chain:done();
 
 		return chain;
 	end)(),
+	child = function ()
+		return {} :: any;
+	end,
 };
 
 return Function;

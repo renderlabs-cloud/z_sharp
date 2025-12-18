@@ -1,17 +1,15 @@
 // TODO: Documentation
 
-
 pub mod build;
-pub mod modification;
 pub mod config;
-
-#[macro_use]
-extern crate rust_i18n;
+pub mod lexer;
+pub mod modification;
 
 #[macro_use]
 extern crate unwrap;
 
-pub use crate::build::builder;
+// #[macro_use]
+// extern crate enum_dispatch;
 
 // Localization
-i18n!("i18n", fallback = "en");
+rust_i18n::i18n!("i18n", fallback = "en");

@@ -1,7 +1,5 @@
-pub mod lua;
-pub mod capture;
-pub mod consumer;
 pub mod gluea;
+pub mod lua;
 
 use ::mlua::prelude::*;
 
@@ -13,6 +11,6 @@ nest! {
 	pub struct Modification {
 		pub name: &'static str,
 		pub lua: Lua,
-		
+
 	}
 }

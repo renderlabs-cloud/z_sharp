@@ -5,7 +5,7 @@ use z_sharp::modification::Modification;
 
 pub fn get() -> ::mlua::Result<Modification> {
 	return modification::lua::new(
-		"My Mod", 
-		include_str!("../src/standard/init.luau").to_string()
+		"My Mod",
+		include_str!("../src/standard/init.luau").to_string(),
 	);
 }

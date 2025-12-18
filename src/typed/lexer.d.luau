@@ -1,61 +1,134 @@
-export type Chain = {
-	capture: (Rule) -> (),
-};
+--[=[
+	Type declarations for the lexer.
+]=]
 
-export type Rule = {
-	Single: (SingleConfig) -> Rule,
-	Or: (OrConfig) -> Rule,
-	Repeat: (RepeatConfig) -> Rule,
-	Child: (ChildConfig) -> Rule,
-	Logic: (LogicConfig) -> Rule,
-};
+--[=[
+	`capture.rs`.
+]=]
 
-local Rule = {
+-- TODO: Remove the need for UserData wrappers.
 
-};
-
-export type SingleConfig = {
-	name: string?,
+export type SingleDetails = {
 	pattern: string,
-	required: boolean?,
 };
 
-local SingleConfig: any = {
-	-- new = function ()
+local SingleDetails = {
+	new = function (_: SingleDetails): SingleDetails
+		return {} :: SingleDetails;
+	end
 };
 
-export type OrConfig = {
-	name: string?,
-	rules_list: { Rule },
-	required: boolean?,
+export type OrDetails = {
+	rules_map: { [string]: { Rule } },
 };
 
-export type RepeatConfig = {
-	name: string,
+local OrDetails = {
+	new = function (_: OrDetails): OrDetails
+		return {} :: OrDetails;
+	end
+};
+
+export type RepeatDetails = {
 	rules: { Rule },
 	min: number?,
 	max: number?,
-	required: boolean?,
 };
 
-export type ChildConfig = {
-	name: string?,
+local RepeatDetails = {
+	new = function (_: RepeatDetails): RepeatDetails
+		return {} :: RepeatDetails;
+	end
+};
+
+export type ChildDetails = {
 	child: Chain,
-	required: boolean?,
 };
 
-export type LogicConfig = {
-	func: () -> boolean,
+local ChildDetails = {
+	new = function (_: ChildDetails): ChildDetails
+		return {} :: ChildDetails;
+	end
 };
+
+--[=[
+	@TODO Clarify types.
+]=]
+export type LogicDetails = {
+	func: ({ [string]: any }) -> boolean,
+};
+
+local LogicDetails = {
+	new = function (_: LogicDetails): LogicDetails
+		return {} :: LogicDetails;
+	end
+};
+
+export type Rule = {
+	name: string?,
+	required: boolean?,
+	details: RuleDetails,
+};
+
+export type RuleDetails = {
+	Single: (SingleDetails) -> RuleDetails,
+	Or: (OrDetails) -> RuleDetails,
+	Repeat: (RepeatDetails) -> RuleDetails,
+	Child: (ChildDetails) -> RuleDetails,
+	Logic: (LogicDetails) -> RuleDetails,
+};
+
+local RuleDetails = {
+	Single = function (_: SingleDetails): RuleDetails
+		return {} :: RuleDetails;
+	end,
+	Or = function (_: OrDetails): RuleDetails
+		return {} :: RuleDetails;
+	end,
+	Repeat = function (_: RepeatDetails): RuleDetails
+		return {} :: RuleDetails;
+	end,
+	Child = function (_: ChildDetails): RuleDetails
+		return {} :: RuleDetails;
+	end,
+	Recurse = function (): RuleDetails
+		return {} :: RuleDetails;
+	end,
+	Logic = function (_: LogicDetails): RuleDetails
+		return {} :: RuleDetails;
+	end,
+	None = {},
+};
+
+export type Chain = {
+	name: string,
+	rules: { Rule },
+	
+	capture: (self: Chain, Rule) -> (),
+};
+
+local Chain = {
+	new = function (_: string): Chain
+		return {} :: Chain;
+	end,
+};
+
+export type ChainImpl = {
+	chain: Chain,
+};
+
+-- ...
 
 local lexer = {
+	SingleDetails = SingleDetails,
+	RepeatDetails = RepeatDetails,
+	OrDetails = OrDetails,
+	ChildDetails = ChildDetails,
+	LogicDetails = LogicDetails,
 
-	Rule = Rule,
-	Chain = {
-		new = function (name): Chain
-			return {} :: Chain;
-		end,
-	},
+	-- Add rule?
+	RuleDetails = RuleDetails,
+
+	Chain = Chain,
 	register_chain = function (chain: Chain): () end,
 };
 

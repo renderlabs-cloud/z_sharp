@@ -13,7 +13,7 @@
 	anyhow = "1.0.100"
 	# Lua.
 	mlua = { version = ">=0.11.4", features = ["luau", "serde", "macros", "userdata-wrappers"] }
-	mlua-magic-macros = "^0.1.2" # Made by me!
+	mlua-magic-macros = "^0" # Made by me!
 	serde = { version = ">=1.0.228", features = ["derive", "rc"] }
 	tokio = { version = ">=1.48.0", features = ["rt-multi-thread", "macros", "time"] }
 	# parking_lot = { version = ">=0.12.5" } 
@@ -26,10 +26,14 @@
 	log = "0.4.29"
 	unwrap = "1.2.1"
 	lazy_static = "^1.5.0"
-	nestify = ">=0.3.3"
+	paste = "^1"
 	static-toml = ">=1.3.0"
 	# International support with i18n.
 	rust-i18n = ">=3"
+	# My commonly used dependencies.
+	enum_dispatch = ">=0.3"
+	nestify = ">=0.3"
+	# My style footer
 
 
 [dev-dependencies]
@@ -37,12 +41,12 @@
 	time-test = { version = "0.3.0" }
 	tracing-subscriber = "0.3.20"
 
-[features]
-
-[[bin]]
-	name = "zs"
-	path = "cli/main.rs"
-	required-features = ["cli"]
+# [features]
+#
+# [[bin]]
+#	name = "zs"
+#	path = "cli/main.rs"
+#	required-features = ["cli"]
 
 # My style footer
 [lints.clippy]

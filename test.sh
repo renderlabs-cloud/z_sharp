@@ -8,6 +8,8 @@ echo "$PPP" | gcc -P -x assembler-with-cpp -
 
 rm a.out
 
+bash ./fmt.sh
+
 export RUSTFLAGS="-C link-args=-Wl,-Bdynamic -llua5.4"
 export RUST_BACKTRACE=1
 

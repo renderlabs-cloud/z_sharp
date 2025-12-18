@@ -1,33 +1,20 @@
+// This file will be removed in the future.
+
+use ::mlua::prelude::*;
 use ::mlua::{
-	Value, Table,
-	IntoLua,
 	FromLua,
 	// UserData,
 	// UserDataRef,
-};
-use ::mlua::prelude::*;
-
-// use ::std::rc::{ Rc, };
-use ::std::{
-	cell::{
-		RefCell,
-	},
-	rc::{
-		Rc,
-	},
+	IntoLua,
+	Table,
+	Value,
 };
 
-use ::serde::{
-	Serialize,
-};
+use ::serde::{Deserialize, Serialize};
 
+use ::std::{cell::RefCell, rc::Rc};
 
-use ::derive_more::{
-	with_trait::{
-		Deref,
-		
-	},
-};
+use ::derive_more::with_trait::Deref;
 
 #[derive(Clone, Deref, Debug)]
 pub struct Glue(#[deref] Lua);
@@ -38,7 +25,7 @@ impl Default for Glue {
 	}
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct Gluea {
 	pub(self) glue: RefCell<Glue>,
 }
@@ -54,13 +41,13 @@ impl Gluea {
 impl Deref for Gluea {
 	type Target = RefCell<Glue>;
 
-	fn deref(& self) -> & Self::Target {
+	fn deref(&self) -> &Self::Target {
 		return &(self.glue);
 	}
 }
 
 impl IntoLua for Gluea {
-	fn into_lua(self, lua: & Lua) -> mlua::Result<Value> {
+	fn into_lua(self, lua: &Lua) -> ::mlua::Result<Value> {
 		let gluea_table: Table = lua.create_table()?;
 
 		let metatable: Table = lua.create_table()?;
@@ -73,13 +60,13 @@ impl IntoLua for Gluea {
 
 impl FromLua for Gluea {
 	/// This function does not return the Glue instance!
-	fn from_lua(_: Value, _: & Lua) -> mlua::Result<Self> {
+	fn from_lua(_: Value, _: &Lua) -> ::mlua::Result<Self> {
 		return Ok(Gluea::default());
 	}
 }
 
 // TODO: Implement in mlua-magic so this isn't needed.
-#[derive(Clone, Deref, Debug)]
+#[derive(Clone, Deref, Deserialize, Debug)]
 pub struct LuaHider<T>(#[deref] pub(self) Option<T>);
 
 impl<T> LuaHider<T> {
@@ -87,12 +74,12 @@ impl<T> LuaHider<T> {
 		return Self(Some(value));
 	}
 
-	pub fn peek(& self) -> ::mlua::Result<& T> {
+	pub fn peek(&self) -> ::mlua::Result<&T> {
 		match &(self.0) {
-			Some(value) => {
+			| Some(value) => {
 				return Ok(value);
 			},
-			None => {
+			| None => {
 				todo!();
 			},
 		};
@@ -100,21 +87,19 @@ impl<T> LuaHider<T> {
 }
 
 impl<T: IntoLua> IntoLua for LuaHider<T> {
-fn into_lua(self, _: &Lua) -> ::mlua::Result<Value> {
+	fn into_lua(self, _: &Lua) -> ::mlua::Result<Value> {
 		return Ok(Value::Nil);
 	}
 }
 
 impl<T: FromLua> FromLua for LuaHider<T> {
 	fn from_lua(_: Value, _: &Lua) -> ::mlua::Result<Self> {
-		return Ok(
-			Self(None)
-		);
+		return Ok(Self(None));
 	}
 }
 
 // Lua Rc
-#[derive(Clone, Deref, Serialize, Debug)]
+#[derive(Clone, Deref, Debug)]
 pub struct LuaRc<T>(#[deref] pub(self) Rc<T>);
 
 impl<T> LuaRc<T> {
@@ -124,15 +109,13 @@ impl<T> LuaRc<T> {
 }
 
 impl<T: IntoLua> IntoLua for LuaRc<T> {
-	fn into_lua(self, _: &Lua) -> mlua::Result<Value> {
+	fn into_lua(self, _: &Lua) -> ::mlua::Result<Value> {
 		return Ok(Value::Nil);
 	}
 }
 
 impl<T: FromLua> FromLua for LuaRc<T> {
-	fn from_lua(value: Value, lua: &Lua) -> mlua::Result<Self> {
-		return Ok(
-			Self(Rc::new(T::from_lua(value, lua)?))
-		);
+	fn from_lua(value: Value, lua: &Lua) -> ::mlua::Result<Self> {
+		return Ok(Self(Rc::new(T::from_lua(value, lua)?)));
 	}
 }
