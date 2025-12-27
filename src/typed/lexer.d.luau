@@ -1,20 +1,16 @@
---[=[
+--[[
 	Type declarations for the lexer.
-]=]
+]]
 
---[=[
-	`capture.rs`.
-]=]
-
--- TODO: Remove the need for UserData wrappers.
+local user_data = require('@src/user_data.luau');
 
 export type SingleDetails = {
 	pattern: string,
 };
 
 local SingleDetails = {
-	new = function (_: SingleDetails): SingleDetails
-		return {} :: SingleDetails;
+	new = function (_: SingleDetails): user_data.Of<SingleDetails>
+		return {} :: user_data.Of<SingleDetails>;
 	end
 };
 
@@ -23,8 +19,8 @@ export type OrDetails = {
 };
 
 local OrDetails = {
-	new = function (_: OrDetails): OrDetails
-		return {} :: OrDetails;
+	new = function (_: OrDetails): user_data.Of<OrDetails>
+		return {} :: user_data.Of<OrDetails>;
 	end
 };
 
@@ -35,8 +31,8 @@ export type RepeatDetails = {
 };
 
 local RepeatDetails = {
-	new = function (_: RepeatDetails): RepeatDetails
-		return {} :: RepeatDetails;
+	new = function (_: RepeatDetails): user_data.Of<RepeatDetails>
+		return {} :: user_data.Of<RepeatDetails>;
 	end
 };
 
@@ -45,21 +41,19 @@ export type ChildDetails = {
 };
 
 local ChildDetails = {
-	new = function (_: ChildDetails): ChildDetails
-		return {} :: ChildDetails;
+	new = function (_: ChildDetails): user_data.Of<ChildDetails>
+		return {} :: user_data.Of<ChildDetails>;
 	end
 };
 
---[=[
-	@TODO Clarify types.
-]=]
+-- TODO: Clarify types.
 export type LogicDetails = {
 	func: ({ [string]: any }) -> boolean,
 };
 
 local LogicDetails = {
-	new = function (_: LogicDetails): LogicDetails
-		return {} :: LogicDetails;
+	new = function (_: LogicDetails): user_data.Of<LogicDetails>
+		return {} :: user_data.Of<LogicDetails>;
 	end
 };
 
@@ -67,6 +61,12 @@ export type Rule = {
 	name: string?,
 	required: boolean?,
 	details: RuleDetails,
+};
+
+local Rule = {
+	new = function (_: Rule): user_data.Of<Rule>
+		return {} :: user_data.Of<Rule>;
+	end
 };
 
 export type RuleDetails = {
@@ -78,23 +78,23 @@ export type RuleDetails = {
 };
 
 local RuleDetails = {
-	Single = function (_: SingleDetails): RuleDetails
-		return {} :: RuleDetails;
+	Single = function (_: user_data.Of<SingleDetails>): user_data.Of<RuleDetails>
+		return {} :: user_data.Of<RuleDetails>;
 	end,
-	Or = function (_: OrDetails): RuleDetails
-		return {} :: RuleDetails;
+	Or = function (_: user_data.Of<OrDetails>): user_data.Of<RuleDetails>
+		return {} :: user_data.Of<RuleDetails>;
 	end,
-	Repeat = function (_: RepeatDetails): RuleDetails
-		return {} :: RuleDetails;
+	Repeat = function (_: user_data.Of<RepeatDetails>): user_data.Of<RuleDetails>
+		return {} :: user_data.Of<RuleDetails>;
 	end,
-	Child = function (_: ChildDetails): RuleDetails
-		return {} :: RuleDetails;
+	Child = function (_: user_data.Of<ChildDetails>): user_data.Of<RuleDetails>
+		return {} :: user_data.Of<RuleDetails>;
 	end,
-	Recurse = function (): RuleDetails
-		return {} :: RuleDetails;
+	Recurse = function (): user_data.Of<RuleDetails>
+		return {} :: user_data.Of<RuleDetails>;
 	end,
-	Logic = function (_: LogicDetails): RuleDetails
-		return {} :: RuleDetails;
+	Logic = function (_: user_data.Of<LogicDetails>): user_data.Of<RuleDetails>
+		return {} :: user_data.Of<RuleDetails>;
 	end,
 	None = {},
 };
@@ -125,7 +125,7 @@ local lexer = {
 	ChildDetails = ChildDetails,
 	LogicDetails = LogicDetails,
 
-	-- Add rule?
+	Rule = Rule,
 	RuleDetails = RuleDetails,
 
 	Chain = Chain,

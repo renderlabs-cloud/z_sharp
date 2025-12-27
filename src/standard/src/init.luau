@@ -1,13 +1,13 @@
---!strict
---[=[
+--[[
 	Currently this file is for testing.
 	In the future the file(s) will be the standard.
 
 	Anyways, thanks for checking this project out!
+
 	TODO: Compile this BEFORE loading into Z#. I'm not sure how to do this yet.
 
-	@Author Brendan Lucas
---]=]
+	@author Brendan Lucas.
+--]]
 
 local z_sharp = require('@z_sharp');
 

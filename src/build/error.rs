@@ -1,8 +1,10 @@
 use crate::build::source;
 
+use ::std::fmt;
+
 use ::rust_i18n::t;
 
-use ::std::fmt;
+use ::mlua;
 
 #[derive(Debug)]
 pub enum Error {
@@ -10,8 +12,8 @@ pub enum Error {
 	NoMatches(source::Position),
 	NoSourceResolversAvailable,
 	NoSourceResolversAvailableFor(String),
-	LuauError(::mlua::Error),
-	ProxyFailure(::mlua::Error),
+	LuauError(mlua::Error),
+	ProxyFailure(mlua::Error),
 }
 
 impl fmt::Display for self::Error {

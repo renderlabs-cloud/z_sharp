@@ -29,11 +29,11 @@ The following conduct is prohibited within the Z# community and its associated s
 
 This Code of Conduct applies to all community spaces associated with the Z# project, including:
 
-* GitHub repositories and issue trackers
-* Documentation and websites
-* Chat platforms
-* Mailing lists
-* Any in-person or virtual events officially connected to the project
+* GitHub repositories and issue trackers.
+* Documentation and websites.
+* Chat platforms.
+* Mailing lists.
+* Any in-person or virtual events officially connected to the project.
 
 ## **5. Reporting Violations**
 
@@ -43,10 +43,10 @@ Concerns, violations, or questions may be reported to the project maintainers th
 
 Project maintainers are responsible for enforcing this Code of Conduct. They may take any action deemed appropriate, including but not limited to:
 
-* Warning the offending party
-* Temporarily or permanently banning individuals from project spaces
-* Reverting or blocking harmful contributions
-* Escalating issues to higher authorities when necessary
+* Warning the offending party.
+* Temporarily or permanently banning individuals from project spaces.
+* Reverting or blocking harmful contributions.
+* Escalating issues to higher authorities when necessary.
 
 All enforcement decisions will consider the nature and severity of the conduct, as well as the safety and well-being of the community.
 

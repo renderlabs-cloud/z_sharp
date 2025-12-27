@@ -1,27 +1,40 @@
 use crate::{
 	lexer::consumer::Consumer,
-	modification::gluea::{Gluea, LuaHider, LuaRc},
+	modification::{gluea::LuaRc, lua::LuaConstructor},
 };
 
-// TODO: Use `Token` as a data type?
-
-use ::mlua::Function;
-
-// use ::mlua::prelude::*;
+// ? Use `Token` as a data type?
 
 use ::std::collections::HashMap;
+
+use ::mlua::{Function, Table, Value};
+
+use ::serde::{Deserialize, Serialize};
 
 use ::mlua_magic_macros;
 
 use ::nestify::nest;
 
-#[derive(Clone, Debug)]
+macro_rules! impl_new {
+	($type:ty) => {
+		impl LuaConstructor for $type {
+		}
+		#[mlua_magic_macros::implementation]
+		impl $type {
+			fn new(value: Value) -> Result<Self, ::mlua::Error> {
+				return <Self as LuaConstructor>::new(value);
+			}
+		}
+	};
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[mlua_magic_macros::structure]
 pub struct SingleDetails {
 	pub pattern: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[mlua_magic_macros::structure]
 pub struct RepeatDetails {
 	pub rules: Vec<Rule>,
@@ -30,44 +43,50 @@ pub struct RepeatDetails {
 	pub max: Option<usize>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[mlua_magic_macros::structure]
 pub struct OrDetails {
 	pub rules_map: HashMap<String, Vec<Rule>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[mlua_magic_macros::structure]
 pub struct ChildDetails {
-	pub child: LuaRc<Chain>, // Prevent recursive types.
+	pub child: LuaRc<Chain>, // Prevent type recursion errors.
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[mlua_magic_macros::structure]
 pub struct LogicDetails {
+	#[serde(skip)] // Simply ignore this since serialization could be a problem here.
 	pub func: Option<Function>,
 }
 
-mlua_magic_macros::compile!(type_path = SingleDetails, fields = true);
-mlua_magic_macros::compile!(type_path = RepeatDetails, fields = true);
-mlua_magic_macros::compile!(type_path = OrDetails, fields = true);
-mlua_magic_macros::compile!(type_path = ChildDetails, fields = true);
-mlua_magic_macros::compile!(type_path = LogicDetails, fields = true);
+impl_new!(SingleDetails);
+impl_new!(RepeatDetails);
+impl_new!(OrDetails);
+impl_new!(ChildDetails);
+impl_new!(LogicDetails);
+
+mlua_magic_macros::compile!(type_path = SingleDetails, fields = true, methods = true);
+mlua_magic_macros::compile!(type_path = RepeatDetails, fields = true, methods = true);
+mlua_magic_macros::compile!(type_path = OrDetails, fields = true, methods = true);
+mlua_magic_macros::compile!(type_path = ChildDetails, fields = true, methods = true);
+mlua_magic_macros::compile!(type_path = LogicDetails, fields = true, methods = true);
 
 nest! {
-	#[derive(Clone, Debug)]
+	#[derive(Clone, Serialize, Deserialize, Debug)]
 	#[mlua_magic_macros::structure]
 	pub struct Chain {
-		pub(crate) glue: LuaHider<Gluea>, // Hide this with mlua-magic-macros. Add a new macro '#[mlua_magic_macros::hidden]'
 		pub name: String,
 		pub rules: Vec<
-			#[derive(Clone, Default, Debug)]
+			#[derive(Clone, Default, Serialize, Deserialize, Debug)]
 			#[mlua_magic_macros::structure]
 			pub struct Rule {
 				pub name: Option<String>,
 				pub required: bool,
 				pub details:
-					#[derive(Clone, Default, Debug)]
+					#[derive(Clone, Default, Serialize, Deserialize, Debug)]
 					#[mlua_magic_macros::enumeration]
 					pub enum RuleDetails {
 						Single(SingleDetails),
@@ -86,20 +105,30 @@ nest! {
 	}
 }
 
-mlua_magic_macros::compile!(type_path = RuleDetails, variants = true);
+#[mlua_magic_macros::implementation]
+impl Rule {
+	pub fn new(table: Table) -> Result<Self, ::mlua::Error> {
+		return Ok(Rule {
+			name: table.get("name".to_string())?,
+			required: table.get("required".to_string())?,
+			details: table.get("details".to_string())?,
+		});
+	}
+}
 
-mlua_magic_macros::compile!(type_path = Rule, fields = true);
+mlua_magic_macros::compile!(type_path = Rule, fields = true, methods = true);
+mlua_magic_macros::compile!(type_path = RuleDetails, variants = true);
 
 pub type CaptureResultsMap = HashMap<String, CaptureResult>;
 
 nest! {
-	#[derive(Clone, Debug)]
+	#[derive(Clone, Serialize, Deserialize, Debug)]
 	#[mlua_magic_macros::structure]
 	pub struct CaptureResult {
 		pub rule: Rule,
 		pub captured: String,
 		pub data: Option<
-			#[derive(Clone, Default, Debug)]
+			#[derive(Clone, Default, Serialize, Deserialize, Debug)]
 			#[mlua_magic_macros::enumeration]
 			pub enum CaptureResultData {
 				Single,
@@ -132,11 +161,9 @@ impl Default for CaptureResult {
 // TODO: Major rewrite with mlua-macro-magic
 #[mlua_magic_macros::implementation]
 impl Chain {
-	#[allow(unreachable_code, unused_variables, clippy::diverging_sub_expression)]
-	pub fn new(name: String, gluea: Gluea) -> ::mlua::Result<Self> {
+	pub fn new(name: String) -> ::mlua::Result<Self> {
 		let instance: Self = Self {
 			name: name,
-			glue: LuaHider::new(gluea),
 			rules: Vec::new(),
 			properties: HashMap::new(),
 		};

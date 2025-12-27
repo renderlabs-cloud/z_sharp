@@ -1,5 +1,5 @@
-use crate::config::VERSION;
 use crate::{
+	config::VERSION,
 	lexer::{
 		// consumer::{ Consumer, },
 		capture::{
@@ -16,13 +16,31 @@ use crate::{
 	modification::Modification,
 };
 
-use ::mlua::{Lua, StdLib, Table, Value};
+use ::mlua::{Lua, LuaSerdeExt, ObjectLike, StdLib, Table, Value, serde::Deserializer};
 
-use ::mlua::prelude::*;
+use ::serde::Deserialize;
+
+pub trait LuaConstructor: for<'de> Deserialize<'de> {
+	#[inline]
+	fn new(value: Value) -> Result<Self, ::mlua::Error> {
+		let output: Result<Self, mlua::Error> = Self::deserialize(Deserializer::new(value));
+
+		return output;
+	}
+}
+
+pub fn to_pretty_string(value: &Value) -> String {
+	let result: Result<String, ::serde_json::Error> = ::serde_json::to_string_pretty(value);
+
+	return match result {
+		| Ok(s) => s,
+		| Err(e) => format!("Error: {}", e),
+	};
+}
 
 /// Exports the Z# internal library to Lua.
 ///
-/// The function returns a [`Result`] containing the created table on success, or a [`LuaError`] on failure.
+/// The function returns a [`Result`] containing the created table on success, or a [`mlua::Error`] on failure.
 pub fn load_z_sharp_lua_module(lua: &Lua, (): ()) -> ::mlua::Result<Table> {
 	let exports: Table = lua.create_table()?;
 
@@ -64,24 +82,24 @@ pub fn load_z_sharp_lua_module(lua: &Lua, (): ()) -> ::mlua::Result<Table> {
 	let console: Table = lua.create_table_from(vec![
 		(
 			"log",
-			lua.create_function(|_: &Lua, line: Value| -> ::mlua::Result<()> {
-				::log::info!("{:#?}", line);
+			lua.create_function(|_: &Lua, value: Value| -> ::mlua::Result<()> {
+				::log::info!("{}", to_pretty_string(&value));
 
 				return Ok(());
 			})?,
 		),
 		(
 			"warn",
-			lua.create_function(|_: &Lua, line: Value| -> ::mlua::Result<()> {
-				::log::warn!("{:#?}", line);
+			lua.create_function(|_: &Lua, value: Value| -> ::mlua::Result<()> {
+				::log::warn!("{}", to_pretty_string(&value));
 
 				return Ok(());
 			})?,
 		),
 		(
 			"error",
-			lua.create_function(|_: &Lua, line: Value| -> ::mlua::Result<()> {
-				::log::error!("{:#?}", line);
+			lua.create_function(|_: &Lua, value: Value| -> ::mlua::Result<()> {
+				::log::error!("{}", to_pretty_string(&value));
 
 				return Ok(());
 			})?,
@@ -118,8 +136,8 @@ pub fn create_unsafe_portion(lua: &Lua) -> ::mlua::Result<Table> {
 ///
 /// This function takes a name and a Lua source file string. It loads the Lua source file into a new [`Lua`] instance and creates a new [`Modification`] instance with the provided name and the loaded Lua instance.
 ///
-/// The function returns a [`Result`] containing the created [`Modification`] instance on success, or a [`LuaError`] on failure.
-pub fn new(name: &'static str, source: String) -> Result<Modification, LuaError> {
+/// The function returns a [`Result`] containing the created [`Modification`] instance on success, or a [`mlua::Error`] on failure.
+pub fn new(name: &'static str, source: String) -> Result<Modification, ::mlua::Error> {
 	let lua: Lua = Lua::new_with(
 		StdLib::BIT
 			| StdLib::BUFFER
@@ -130,7 +148,7 @@ pub fn new(name: &'static str, source: String) -> Result<Modification, LuaError>
 			| StdLib::TABLE
 			| StdLib::UTF8
 			| StdLib::VECTOR,
-		LuaOptions::default(),
+		mlua::LuaOptions::default(),
 	)?;
 
 	let z_sharp_module: &Table = &load_z_sharp_lua_module(&lua, ())?;
@@ -140,7 +158,9 @@ pub fn new(name: &'static str, source: String) -> Result<Modification, LuaError>
 	globals.set("__Z_SHARP__", z_sharp_module)?;
 
 	lua.sandbox(true)?;
-	lua.load(source).exec()?;
+	let chunk: mlua::Chunk<'_> = lua.load(source).set_name("@/init.luau");
+
+	chunk.exec()?;
 
 	return Ok(Modification {
 		name: name,

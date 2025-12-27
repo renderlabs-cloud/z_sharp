@@ -50,6 +50,7 @@ impl<'config> Intermediate<'config> {
 					);
 				},
 				| Err(error) => {
+					// TODO: Move this logic.
 					// # The __Z_SHARP__ internal proxy has failed.
 					// ! This is a serious user error.
 

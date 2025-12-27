@@ -1,5 +1,3 @@
---!strict
-
 local z_sharp = require('@z_sharp');
 
 local lexer = z_sharp.lexer;

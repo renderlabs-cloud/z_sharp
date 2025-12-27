@@ -20,6 +20,7 @@ mod tests {
 	async fn main() -> Result<(), Error> {
 		time_test!();
 		::tracing_subscriber::fmt::init();
+		::log::set_max_level(::log::LevelFilter::Trace);
 
 		let my_mod: Modification = match standard::get() {
 			| Ok(mod_) => mod_,

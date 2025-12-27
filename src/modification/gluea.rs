@@ -1,4 +1,5 @@
 // This file will be removed in the future.
+// It will be merged with mlua-magic.
 
 use ::mlua::prelude::*;
 use ::mlua::{
@@ -11,6 +12,7 @@ use ::mlua::{
 };
 
 use ::serde::{Deserialize, Serialize};
+use serde::Serializer;
 
 use ::std::{cell::RefCell, rc::Rc};
 
@@ -46,6 +48,18 @@ impl Deref for Gluea {
 	}
 }
 
+impl Serialize for Gluea {
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+		return serializer.serialize_none();
+	}
+}
+
+impl<'de> Deserialize<'de> for Gluea {
+	fn deserialize<D: serde::Deserializer<'de>>(_: D) -> Result<Self, D::Error> {
+		return Ok(Gluea::default());
+	}
+}
+
 impl IntoLua for Gluea {
 	fn into_lua(self, lua: &Lua) -> ::mlua::Result<Value> {
 		let gluea_table: Table = lua.create_table()?;
@@ -66,7 +80,7 @@ impl FromLua for Gluea {
 }
 
 // TODO: Implement in mlua-magic so this isn't needed.
-#[derive(Clone, Deref, Deserialize, Debug)]
+#[derive(Clone, Deref, Deserialize, Serialize, Debug)]
 pub struct LuaHider<T>(#[deref] pub(self) Option<T>);
 
 impl<T> LuaHider<T> {
@@ -99,7 +113,7 @@ impl<T: FromLua> FromLua for LuaHider<T> {
 }
 
 // Lua Rc
-#[derive(Clone, Deref, Debug)]
+#[derive(Clone, Deref, Serialize, Deserialize, Debug)]
 pub struct LuaRc<T>(#[deref] pub(self) Rc<T>);
 
 impl<T> LuaRc<T> {

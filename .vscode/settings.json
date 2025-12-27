@@ -1,7 +1,7 @@
 {
 	"luau-lsp.sourcemap.enabled": false,
 	"flow-icons.folders.associations": {
-		"macros": "console",
+		"coral": "console",
 	},
 	"better-comments.tags": [
 		{

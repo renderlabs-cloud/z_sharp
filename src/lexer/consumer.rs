@@ -7,6 +7,8 @@ use ::std::collections::HashMap;
 
 use ::regex::{Match, Regex};
 
+use ::mlua;
+
 #[derive(Clone, Default, Debug)]
 #[mlua_magic_macros::structure]
 pub struct Consumer {
@@ -157,11 +159,11 @@ impl Consumer {
 			| RuleDetails::Recurse() => {
 				// Since a chain cannot recurse, we need to add a new Rule type.
 				let sub_results: CaptureResult = self.check(
-					consumer_result.rule.clone(), /* ( 1 ) */
+					consumer_result.rule.clone(), /* (1) */
 					(&LuaRc::new(&mut CaptureResultsMap::new()), text),
 				);
 
-				// ( 1 ): Optimize?
+				// (1): Optimize?
 
 				consumer_result.is_match = sub_results.is_match;
 				consumer_result.captured = sub_results.captured;
@@ -172,7 +174,7 @@ impl Consumer {
 				// TODO: Add error handling.
 				if let Some(func) = &config.func {
 					let input: CaptureResultsMap = (***results).clone();
-					let func_result: ::mlua::Result<bool> = func.call(input);
+					let func_result: mlua::Result<bool> = func.call((input, text));
 
 					match func_result {
 						| Ok(is_match) => {
@@ -189,7 +191,7 @@ impl Consumer {
 
 			| RuleDetails::Unknown => {
 				::log::warn!("An unknown rule was encountered. This is probably a bug.");
-				// TODO: Add bug report system.
+				// TODO: Add bug report system and generalize cases like this.
 				todo!();
 			},
 		};
