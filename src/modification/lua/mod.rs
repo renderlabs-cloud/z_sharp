@@ -1,42 +1,17 @@
+pub mod capsule;
+pub mod magic;
+pub mod string;
+
 use crate::{
 	config::VERSION,
 	lexer::{
 		// consumer::{ Consumer, },
-		capture::{
-			Chain,
-			ChildDetails,
-			LogicDetails,
-			OrDetails,
-			RepeatDetails,
-			Rule,
-			RuleDetails,
-			SingleDetails,
-		},
+		capture::{Chain, Rule},
 	},
 	modification::Modification,
 };
 
-use ::mlua::{Lua, LuaSerdeExt, ObjectLike, StdLib, Table, Value, serde::Deserializer};
-
-use ::serde::Deserialize;
-
-pub trait LuaConstructor: for<'de> Deserialize<'de> {
-	#[inline]
-	fn new(value: Value) -> Result<Self, ::mlua::Error> {
-		let output: Result<Self, mlua::Error> = Self::deserialize(Deserializer::new(value));
-
-		return output;
-	}
-}
-
-pub fn to_pretty_string(value: &Value) -> String {
-	let result: Result<String, ::serde_json::Error> = ::serde_json::to_string_pretty(value);
-
-	return match result {
-		| Ok(s) => s,
-		| Err(e) => format!("Error: {}", e),
-	};
-}
+use ::mlua::{Lua, LuaSerdeExt, ObjectLike, StdLib, Value, Table};
 
 /// Exports the Z# internal library to Lua.
 ///
@@ -49,14 +24,16 @@ pub fn load_z_sharp_lua_module(lua: &Lua, (): ()) -> ::mlua::Result<Table> {
 	let lexer: Table = lua.create_table()?;
 
 	lexer.set("Chain", lua.create_proxy::<Chain>()?)?;
+
 	lexer.set("Rule", lua.create_proxy::<Rule>()?)?;
-	lexer.set("RuleDetails", lua.create_proxy::<RuleDetails>()?)?;
-	lexer.set("RuleDetails", lua.create_proxy::<RuleDetails>()?)?;
-	lexer.set("SingleDetails", lua.create_proxy::<SingleDetails>()?)?;
-	lexer.set("OrDetails", lua.create_proxy::<OrDetails>()?)?;
-	lexer.set("RepeatDetails", lua.create_proxy::<RepeatDetails>()?)?;
-	lexer.set("ChildDetails", lua.create_proxy::<ChildDetails>()?)?;
-	lexer.set("LogicDetails", lua.create_proxy::<LogicDetails>()?)?;
+
+	// Awaiting deletion.
+	// lexer.set("RuleDetails", lua.create_proxy::<RuleDetails>()?)?;
+	// lexer.set("SingleDetails", lua.create_proxy::<SingleDetails>()?)?;
+	// lexer.set("OrDetails", lua.create_proxy::<OrDetails>()?)?;
+	// lexer.set("RepeatDetails", lua.create_proxy::<RepeatDetails>()?)?;
+	// lexer.set("ChildDetails", lua.create_proxy::<ChildDetails>()?)?;
+	// lexer.set("LogicDetails", lua.create_proxy::<LogicDetails>()?)?;
 
 	lexer.set(
 		"register_chain",
@@ -83,7 +60,7 @@ pub fn load_z_sharp_lua_module(lua: &Lua, (): ()) -> ::mlua::Result<Table> {
 		(
 			"log",
 			lua.create_function(|_: &Lua, value: Value| -> ::mlua::Result<()> {
-				::log::info!("{}", to_pretty_string(&value));
+				::log::info!("{}", string::to_string(&value));
 
 				return Ok(());
 			})?,
@@ -91,7 +68,7 @@ pub fn load_z_sharp_lua_module(lua: &Lua, (): ()) -> ::mlua::Result<Table> {
 		(
 			"warn",
 			lua.create_function(|_: &Lua, value: Value| -> ::mlua::Result<()> {
-				::log::warn!("{}", to_pretty_string(&value));
+				::log::warn!("{}", string::to_string(&value));
 
 				return Ok(());
 			})?,
@@ -99,7 +76,7 @@ pub fn load_z_sharp_lua_module(lua: &Lua, (): ()) -> ::mlua::Result<Table> {
 		(
 			"error",
 			lua.create_function(|_: &Lua, value: Value| -> ::mlua::Result<()> {
-				::log::error!("{}", to_pretty_string(&value));
+				::log::error!("{}", string::to_string(&value));
 
 				return Ok(());
 			})?,
@@ -108,7 +85,7 @@ pub fn load_z_sharp_lua_module(lua: &Lua, (): ()) -> ::mlua::Result<Table> {
 
 	exports.set("console", console)?;
 
-	// HACK (+/-) This exposes Z#'s internal registry to Lua!
+	// HACK (+/-): This exposes Z#'s internal registry to Lua!
 	// /!\ Ensure there are no security vulnerabilities!
 	exports.set("__UNSAFE__", create_unsafe_portion(lua)?)?;
 

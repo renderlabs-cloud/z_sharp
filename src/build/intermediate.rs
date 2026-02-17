@@ -8,7 +8,9 @@ use crate::{
 
 use ::std::collections::HashMap;
 
-use ::mlua::ObjectLike;
+use ::mlua::{ObjectLike};
+
+use ::tokio;
 
 pub struct Intermediate<'config> {
 	pub config: &'config Config,
@@ -39,7 +41,7 @@ impl<'config> Intermediate<'config> {
 				.get_path::<Vec<Chain>>("__Z_SHARP__.__UNSAFE__.registry.chains");
 
 			match get_chains_result {
-				| Ok(chains) => {
+				Ok(chains) => {
 					intermediate.consumers.append(
 						&mut chains
 							.iter()
@@ -49,7 +51,7 @@ impl<'config> Intermediate<'config> {
 							.collect::<Vec<Consumer>>(),
 					);
 				},
-				| Err(error) => {
+				Err(error) => {
 					// TODO: Move this logic.
 					// # The __Z_SHARP__ internal proxy has failed.
 					// ! This is a serious user error.
@@ -62,26 +64,26 @@ impl<'config> Intermediate<'config> {
 		return Ok(intermediate);
 	}
 
-	/// Registers a source resolver with the intermediate.
+	/// Registers a `source_resolver`` with the intermediate.
 	///
 	/// This function will register the provided source resolver with the intermediate.
-	/// The source resolver will be used to resolve sources requested by the consumer.
+	/// The `source_resolver` will be used to resolve sources requested by the consumer.
 	///
 	pub fn add_source_resolvers(&mut self, source_resolver: source::SourceResolver) -> () {
 		self.source_resolvers.push(source_resolver);
 	}
 
-	/// Request a source from all registered source resolvers.
+	/// Request a source from all registered `source_resolvers`.
 	///
-	/// This function will spawn a task for each source resolver, then join all the tasks.
+	/// This function will spawn a task for each `source_resolver`, then join all the tasks.
 	/// If any of the tasks succeed, the source will be added to the `sources` field of the [`self::Intermediate`] instance.
-	/// If all tasks fail, an error will be returned.
 	///
-	/// # Errors
+	/// # Errors.
 	///
-	/// If no source resolvers are registered, an error will be returned with a message indicating that no source resolvers are available.
+	/// If no `source_resolvers` are registered, an error will be returned with a message indicating that no `source_resolvers` are available.
+	/// If any of the `source_resolvers` return an error, the error will be propagated up and returned.
+	/// If all of the `source_resolvers` return [`None`], an error will be returned with a message indicating that no source was found.
 	///
-	/// If any of the source resolvers return an error, the error will be propagated up and returned.
 	///
 	pub async fn request_source(&mut self, name: &'_ str) -> Result<(), self::Error> {
 		let mut set: tokio::task::JoinSet<Option<String>> = tokio::task::JoinSet::new();
@@ -97,13 +99,13 @@ impl<'config> Intermediate<'config> {
 
 		while let Some(join_result) = set.join_next().await {
 			match join_result {
-				| Ok(source_option) => {
+				Ok(source_option) => {
 					if let Some(source) = source_option {
 						self.sources.insert(name.to_string(), source);
 						return Ok(()); // Context gets destroyed since the race was successful.
 					};
 				},
-				| Err(error) => {
+				Err(error) => {
 					::log::error!("{}", error);
 					todo!();
 				},
@@ -116,13 +118,14 @@ impl<'config> Intermediate<'config> {
 	/// Interpret the source associated with the given entry.
 	///
 	/// This function will loop through all the consumers and consume the source
-	/// until no progress is made. If no progress is made, an error will be
+	/// until no text remains. If no progress is made in a single iteration, an error will be
 	/// returned.
 	pub async fn interpret(&mut self, entry: &'_ str) -> Result<(), Error> {
 		// TODO: Blocks, ...etc.
 		let source: &str = &(self.sources[entry]);
 
-		// HACK (+) `source` is never cloned!
+		// HACK (+): `source` is never cloned!
+		// ? Let's keep it that way!
 		let mut remaining: &str = source;
 
 		let mut results: Vec<(String, Option<CaptureResultsMap>)> = Vec::new();
@@ -132,7 +135,7 @@ impl<'config> Intermediate<'config> {
 			return Err(Error::NoConsumers);
 		};
 
-		while !remaining.is_empty() {
+		'parser_loop: while !remaining.is_empty() {
 			let mut was_matched: bool = false;
 
 			'consumer_loop: for consumer in self.consumers.iter_mut() {
@@ -145,16 +148,22 @@ impl<'config> Intermediate<'config> {
 
 					was_matched = true;
 
+					::log::info!("{}: {:#?}", consumer.name, results[results.len() - 1]);
+
 					break 'consumer_loop;
 				};
 			}
 
 			if !was_matched {
-				return Err(Error::NoMatches(source::Position::default()));
+				return Err(Error::NoMatches(source::Position::default())); // TODO: Replace.
+			};
+
+			::log::info!("Remaining: {}", remaining);
+
+			if remaining.is_empty() {
+				break 'parser_loop;
 			};
 		}
-
-		::log::info!("{:?}", results);
 
 		return Ok(());
 	}

@@ -4,6 +4,7 @@ pub mod build;
 pub mod config;
 pub mod lexer;
 pub mod modification;
+pub mod parser;
 
 #[macro_use]
 extern crate unwrap;

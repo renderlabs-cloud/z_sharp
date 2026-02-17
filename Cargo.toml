@@ -32,9 +32,8 @@
 	# International support with i18n.
 	rust-i18n = ">=3"
 	# My commonly used dependencies.
-	enum_dispatch = ">=0.3"
 	nestify = ">=0.3"
-	# My style footer
+	once_cell = "^1"
 
 
 [dev-dependencies]
@@ -52,5 +51,6 @@
 # My style footer
 [lints.clippy]
 	needless_return = "allow"
+	implicit_return = "warn"
 	redundant_field_names = "allow"
 	unused_unit = "allow"

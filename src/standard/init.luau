@@ -5,17 +5,17 @@ local lexer = z_sharp.lexer;
 local Test: z_sharp.ChainImpl = {
 	chain = (function ()
 		local chain = lexer.Chain.new('test');
-		local details = lexer.RuleDetails.Single(
-			lexer.SingleDetails.new({
-				pattern = 'test',
-			})
-		);
 
-		chain:capture(lexer.Rule.new({
-			details = details,
-			name = 'test',
-			required = true,
-		}));
+		chain:capture_all({
+			lexer.Rule.new({
+				type = 'single',
+				details = {
+					pattern = 'test',
+				},
+				name = 'test',
+				required = true,
+			}),
+		});
 
 		return chain	
 end)(),
@@ -35,8 +35,8 @@ return Test end function __DARKLUA_BUNDLE_MODULES.a():typeof(__modImpl())local v
 
 local z_sharp = require('@z_sharp');
 
-local lexer = z_sharp.lexer;
 local console = z_sharp.console;
+local lexer = z_sharp.lexer;
 
 -- Register these chains.
 local chains = {

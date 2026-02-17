@@ -5,7 +5,6 @@ extern crate time_test;
 
 #[cfg(test)]
 mod tests {
-	// HACK (+) Don't recompile for changes in `test.zs`.
 	const TEST_SCRIPT: &str = "tests/test.zs";
 
 	use ::z_sharp::{
@@ -17,21 +16,21 @@ mod tests {
 
 	use ::tokio::fs;
 
-	async fn main() -> Result<(), Error> {
+	async fn test() -> Result<(), Error> {
 		time_test!();
 		::tracing_subscriber::fmt::init();
 		::log::set_max_level(::log::LevelFilter::Trace);
 
 		let my_mod: Modification = match standard::get() {
-			| Ok(mod_) => mod_,
-			| Err(error) => {
+			Ok(mod_) => mod_,
+			Err(error) => {
 				return Err(Error::LuauError(error));
 			},
 		};
 
-		let binding: Config = Config { mods: vec![my_mod] };
+		let config: Config = Config { mods: vec![my_mod] };
 
-		let mut intermediate: Intermediate = Intermediate::new(&binding)?;
+		let mut intermediate: Intermediate = Intermediate::new(&config)?;
 
 		// FS source resolver.
 		intermediate.add_source_resolvers(Box::new(|path: String| {
@@ -48,12 +47,12 @@ mod tests {
 	}
 
 	#[tokio::test]
-	async fn wrap() -> () {
-		let result: Result<(), ::z_sharp::build::error::Error> = self::main().await;
+	async fn main() -> () {
+		let result: Result<(), ::z_sharp::build::error::Error> = self::test().await;
 
 		match result {
-			| Ok(()) => {},
-			| Err(error) => {
+			Ok(()) => {},
+			Err(error) => {
 				::log::error!("{}", error);
 				panic!();
 			},

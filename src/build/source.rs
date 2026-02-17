@@ -6,6 +6,7 @@ pub type SourceResolver = Box<dyn Fn(String) -> Pin<Box<SourceResolverKernel>> +
 
 #[derive(Default, Debug)]
 pub struct Position {
+	// `u32` should be enough.
 	pub line: u32,
 	pub column: u32,
 }

@@ -1,4 +1,4 @@
-# * My Rust style config. *
+# My Rust style config.
 
 unstable_features = true
 
@@ -13,19 +13,19 @@ trailing_comma = "Vertical"
 
 # Everything else
 match_block_trailing_comma = true
-match_arm_leading_pipes = "Always"
+match_arm_leading_pipes = "Never" # IDK.
 
 reorder_impl_items = true
-reorder_imports = true
-reorder_modules = true
 
 space_after_colon = true
 space_before_colon = false
 spaces_around_ranges = true
 
 imports_indent = "Block"
-imports_layout = "HorizontalVertical"
+imports_layout = "Mixed"
 imports_granularity = "Crate"
+group_imports = "Preserve"
+reorder_imports = false
 
 control_brace_style = "AlwaysSameLine"
 

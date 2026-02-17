@@ -4,14 +4,14 @@
 	"bundle": {
 		"modules_identifier": "__DARKLUA_BUNDLE_MODULES",
 		"excludes": [
-			"@z_sharp"
+			"@z_sharp" // Since Z# cannot be bundled.
 		],
 		"require_mode": {
 			"name": "path",
 			"module_folder_name": "init",
 			"sources": {
-				"@pkg": "./Packages", // Common within the Roblox community, so I will use it myself.
-				"@self": "./src"
+				"@pkg": "./packages/",
+				"@self": "./src/"
 			},
 			"use_luau_configuration": true
 		}

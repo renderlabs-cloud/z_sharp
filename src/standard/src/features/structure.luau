@@ -4,25 +4,34 @@ local z_sharp = require('@z_sharp');
 
 local lexer = z_sharp.lexer;
 
-local patterns = require('@src/patterns.luau');
-
 local Whitespace = require('@src/features/whitespace.luau');
-local Type_Reference = require('@src/features/type_reference.luau');
 
 local Structure: z_sharp.ChainImpl = {
 	chain = (function()
 		local chain = lexer.Chain.new('structure');
 
-		chain:capture(
-			lexer.Rule.Single(
-				lexer.SingleConfig.new({
-					pattern = 'struct',
-					required = true,
-				})
-			)	
-		);
+		-- z_sharp.console.log(lexer.ChildDetails.new({child = Whitespace.chain,}))
 
-		chain:capture(
+		chain:capture_all({
+			lexer.Rule.new({
+				details = lexer.RuleDetails.Single(
+					lexer.SingleDetails.new({
+						pattern = 'struct',
+					})
+				),
+				required = true,
+			}),
+			--[[lexer.Rule.new({
+				details = lexer.RuleDetails.Child(
+					lexer.ChildDetails.new({
+						child = Whitespace.chain,
+					})
+				),
+				required = false,
+			}),]]
+		});
+
+		--[[chain:capture(
 			lexer.Rule.Child(
 				lexer.ChildConfig.new({
 					child = Whitespace.chain,
@@ -57,7 +66,7 @@ local Structure: z_sharp.ChainImpl = {
 					required = true,
 				})
 			)
-		);
+		);]]
 
 		return chain;
 	end)(),

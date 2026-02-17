@@ -36,7 +36,7 @@ impl Consumer {
 		(results, text): (&LuaRc<&mut CaptureResultsMap>, &str),
 	) -> CaptureResult {
 		let mut consumer_result: CaptureResult = {
-			// HACK: (+) Don't clone the entire rule!
+			// HACK (+): Don't clone the entire rule!
 			let required: bool = rule.required;
 
 			CaptureResult {
@@ -47,12 +47,10 @@ impl Consumer {
 		};
 
 		match &(consumer_result.rule).details {
-			| RuleDetails::Single(config) => {
+			RuleDetails::Single(config) => {
 				let regex: Regex = unwrap!(Regex::new(&(config.pattern.to_string())));
 
 				let capture: Option<Match> = regex.find(text);
-
-				::log::info!("{}, {}, {:#?}", text, regex, capture);
 
 				if let Some(match_) = capture
 					&& match_.start() == 0
@@ -63,7 +61,7 @@ impl Consumer {
 				};
 			},
 
-			| RuleDetails::Or(config) => {
+			RuleDetails::Or(config) => {
 				let mut sub_results: CaptureResultsMap = HashMap::new();
 				let mut offset: usize = 0;
 
@@ -93,7 +91,7 @@ impl Consumer {
 				consumer_result.captured = text[0 .. offset].to_string();
 			},
 
-			| RuleDetails::Repeat(config) => {
+			RuleDetails::Repeat(config) => {
 				let min_reps: usize = config.min.unwrap_or(0);
 				let max_reps: usize = config.max.unwrap_or(usize::MAX);
 
@@ -134,13 +132,13 @@ impl Consumer {
 				};
 			},
 
-			| RuleDetails::Child(config) => {
+			RuleDetails::Child(config) => {
 				let mut child_consumer: Consumer = config.child.create_consumer();
 				let child_result: (Option<CaptureResultsMap>, bool, &str) =
 					child_consumer.consume(text);
 
 				match child_result.0 {
-					| Some(child_result_data) => {
+					Some(child_result_data) => {
 						// TODO: Don't use `to_string`!
 						let remaining_text: &str = child_result.2;
 						let captured_length: usize = text.len() - remaining_text.len();
@@ -150,13 +148,13 @@ impl Consumer {
 						consumer_result.is_match = true;
 						consumer_result.data = Some(CaptureResultData::Child(child_result_data));
 					},
-					| None => {
+					None => {
 						consumer_result.is_match = true;
 					},
 				};
 			},
 
-			| RuleDetails::Recurse() => {
+			RuleDetails::Recurse() => {
 				// Since a chain cannot recurse, we need to add a new Rule type.
 				let sub_results: CaptureResult = self.check(
 					consumer_result.rule.clone(), /* (1) */
@@ -170,17 +168,17 @@ impl Consumer {
 				consumer_result.data = sub_results.data;
 			},
 
-			| RuleDetails::Logic(config) => {
+			RuleDetails::Logic(config) => {
 				// TODO: Add error handling.
 				if let Some(func) = &config.func {
 					let input: CaptureResultsMap = (***results).clone();
 					let func_result: mlua::Result<bool> = func.call((input, text));
 
 					match func_result {
-						| Ok(is_match) => {
+						Ok(is_match) => {
 							consumer_result.is_match = is_match;
 						},
-						| Err(_) => {
+						Err(_) => {
 							todo!();
 						},
 					};
@@ -189,7 +187,7 @@ impl Consumer {
 				};
 			},
 
-			| RuleDetails::Unknown => {
+			RuleDetails::Unknown => {
 				::log::warn!("An unknown rule was encountered. This is probably a bug.");
 				// TODO: Add bug report system and generalize cases like this.
 				todo!();
@@ -197,7 +195,7 @@ impl Consumer {
 		};
 		// ! This won't always be reached. Don't rely on it.
 		// This comment is here because this block is giant.
-		// TODO: Optimize.
+		// TODO: Optimize?
 
 		return consumer_result;
 	}
@@ -209,10 +207,13 @@ impl Consumer {
 		let mut remaining: &str = text;
 		let mut index: usize = 0;
 
+		// ::log::info!("Consuming rules: {:#?}", self.rules);
+
 		let mut results: CaptureResultsMap = HashMap::new();
 
 		while index < self.rules.len() {
 			let rule: Rule = self.rules[index].clone();
+
 			let result: CaptureResult =
 				self.check(rule.clone(), (&LuaRc::new(&mut results), remaining));
 

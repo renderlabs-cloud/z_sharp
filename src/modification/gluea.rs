@@ -72,12 +72,13 @@ impl IntoLua for Gluea {
 	}
 }
 
-impl FromLua for Gluea {
+// This code should never be used...
+/*impl FromLua for Gluea {
 	/// This function does not return the Glue instance!
 	fn from_lua(_: Value, _: &Lua) -> ::mlua::Result<Self> {
 		return Ok(Gluea::default());
 	}
-}
+}*/
 
 // TODO: Implement in mlua-magic so this isn't needed.
 #[derive(Clone, Deref, Deserialize, Serialize, Debug)]
@@ -90,10 +91,10 @@ impl<T> LuaHider<T> {
 
 	pub fn peek(&self) -> ::mlua::Result<&T> {
 		match &(self.0) {
-			| Some(value) => {
+			Some(value) => {
 				return Ok(value);
 			},
-			| None => {
+			None => {
 				todo!();
 			},
 		};

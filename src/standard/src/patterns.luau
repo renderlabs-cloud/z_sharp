@@ -1,3 +1,7 @@
+--[=[
+	This file will be removed in the near future.
+]=]
+
 local patterns = {
 	IDENTIFIER = '[a-zA-Z_$][a-zA-Z0-9_$]+',
 };

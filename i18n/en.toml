@@ -1,8 +1,16 @@
+[panic]
+	[panic.capsule]
+		extract_unstable = "Attempted to extract from an unstable `Capsule`."
+
+[error]
+	no_consumers = "No consumers found. At least one consumer is required to interact with a source."
+	no_matches = "No matches found at \"%{position}\"." # TODO: Update.
+	[error.some_user_data]
+		# ...
+
 [Luau]
 	[Luau.errors]
-		runtime_failure= "Runtime failure. Cause: \"%{error}\"."
+		runtime = "Luau runtime failure. Cause: \"%{error}\"."
 		proxy_failure = "Internal proxy failure — cannot continue. Cause: \"%{error}\"."
-
-[errors]
-	no_consumers = "No consumers found. At least one consumer is required to interact with a source."
-	no_matches = "No matches found at \"%{position}\"." # TODO: Update soon.
+	[Luau.bugs]
+		not_initialized = "Luau instance is not initialized."

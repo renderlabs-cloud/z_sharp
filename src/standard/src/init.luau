@@ -11,8 +11,8 @@
 
 local z_sharp = require('@z_sharp');
 
-local lexer = z_sharp.lexer;
 local console = z_sharp.console;
+local lexer = z_sharp.lexer;
 
 -- Register these chains.
 local chains = {
